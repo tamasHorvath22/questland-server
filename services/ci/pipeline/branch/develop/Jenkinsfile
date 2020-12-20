@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+    stages {
+        stage('Clean up') {
+            steps {
+                cleanWs()
+            }
+        }
+        stage('Set up Git') {
+            steps {
+                git branch: 'dev',
+                    credentialsId:'2f24bb349e96511a7b431f54d86626aea32bb71f',
+                    url: 'https://github.com/bende85/questland.git'
+            }
+        }
+        stage('Parallel tests') {
+            parallel {
+                stage('Chrome') {
+                    environment {
+                        BROWSER = 'chrome'
+                    }
+                    steps {
+                        sh 'mvn -f Tests/pom.xml clean test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true,
+                            testResults: '**/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Firefox') {
+                    environment {
+                        BROWSER = 'firefox'
+                    }
+                    steps {
+                        sh 'mvn -f Tests/pom.xml clean test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true,
+                            testResults: '**/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post{
+        always{
+            echo 'Build finished, proceed to post workspace cleaning'
+            cleanWs()
+        }
+        failure{
+            mail to: 'zsofi.deak.nia@gmail.com',
+                subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
+                body: "Something is wrong with ${env.BUILD_URL}"
+        }
+    }
+}
