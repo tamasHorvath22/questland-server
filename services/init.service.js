@@ -1,7 +1,7 @@
 const Student = require('../models/student.model');
 const Class = require('../models/class.model');
 
-const saveStudent = async () => {
+const createClass = async () => {
   const studentList = [];
   for(let i = 0; i < 5; i++) {
     studentList.push(Student({
@@ -20,7 +20,8 @@ const saveStudent = async () => {
   }
 
   const newClass = Class({
-    name: 'First class',
+    name: 'bé',
+    year: 9,
     students: studentList
   })
 
@@ -28,5 +29,5 @@ const saveStudent = async () => {
 }
 
 module.exports = {
-  saveStudent: saveStudent
+  createClass: createClass
 };

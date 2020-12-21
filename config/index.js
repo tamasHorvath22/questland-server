@@ -14,19 +14,11 @@ module.exports = {
     return process.env.ACCESS_JWT_PRIVATE_KEY;
   },
 
-  getAccessTokenLife: function () {
-    return process.env.ACCESS_JWT_PRIVATE_KEY_LIFE;
-  },
+  // getRefreshJwtPrivateKey: function () {
+  //   return process.env.REFRESH_JWT_PRIVATE_KEY;
+  // },
 
-  getRefreshJwtPrivateKey: function () {
-    return process.env.REFRESH_JWT_PRIVATE_KEY;
-  },
-
-  getRefreshTokenLife: function () {
-    return process.env.REFRESH_JWT_PRIVATE_KEY_LIFE;
-  },
-
-  getJwtPublicKey: function () {
-    return process.env.JWT_PUBLIC_KEY;
-  },
+  // getJwtPublicKey: function () {
+  //   return process.env.JWT_PUBLIC_KEY;
+  // },
 };

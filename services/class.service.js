@@ -85,11 +85,10 @@ const getClasses = async () => {
   if (classes === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const mapped = classes.map((c, index) => {
+  const mapped = classes.map((c) => {
     return {
       id: c._id,
-      title: c.name,
-      index: index,
+      title: `${c.year}. ${c.name}`
     }
   })
   return mapped;
