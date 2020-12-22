@@ -9,5 +9,5 @@ module.exports = Object.freeze({
   SKILL_USED: 'skillUsed',
   PET_FOOD: 'petFood',
   CURSE_POINTS: 'cursePoints',
-  DUELS: 'duels'
+  DUEL_COUNT: 'duelCount'
 });

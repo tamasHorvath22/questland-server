@@ -14,7 +14,7 @@ const studentSchema = new Schema({
   [StudProp.SKILL_USED]: { type : Number, required: true },
   [StudProp.PET_FOOD]: { type : Number, required: true },
   [StudProp.CURSE_POINTS]: { type : Number, required: true },
-  [StudProp.DUELS]: { type : Number, required: true },
+  [StudProp.DUEL_COUNT]: { type : Number, required: true },
 }, { timestamps: true });
 
 module.exports = mongoose.model(schemas.STUDENT, studentSchema);

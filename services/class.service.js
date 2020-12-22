@@ -93,11 +93,19 @@ const addLessonXpToSumXp = async (classId) => {
   return isSuccess ? eClass : responseMessage.COMMON.ERROR;
 };
 
-
 const syncGoogleSheet = async (students) => {
   const sheet = await accessSpreadsheet();
   const rows = await sheet.getRows();
-  const props = ['LESSON_XP', 'MANA_POINTS', 'PET_FOOD', 'CURSE_POINTS', 'MANA_MODIFIER', 'XP_MODIFIER'];
+  const props = [
+    'LESSON_XP',
+    'MANA_POINTS',
+    'PET_FOOD',
+    'CURSE_POINTS',
+    'MANA_MODIFIER',
+    'XP_MODIFIER',
+    'SKILL_COUNTER',
+    'DUEL_COUNT'
+  ];
   students.forEach(student => {
     const row = rows.find(row => row[SheetHeaders.NAME] === student.name);
     if (!row) {
