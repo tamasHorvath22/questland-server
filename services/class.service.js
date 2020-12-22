@@ -1,7 +1,28 @@
 const responseMessage = require("../constants/api-response-messages");
 const ClassDoc = require('../persistence/class.doc');
 const StudProp = require('../constants/student.properties');
+const SheetHeaders = require('../constants/sheet.headers');
 const ClassTransaction = require('../persistence/class.transactions');
+const { GoogleSpreadsheet } = require("google-spreadsheet");
+const googleDoc = new GoogleSpreadsheet("149rWP-JRudGvfVKppuMlOmUxv0fWzqiRGeCZTBJfb-g");
+
+const loadSpreadsheet = async () => {
+  try {
+    await googleDoc.useServiceAccountAuth({
+      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n")
+    });
+    await googleDoc.loadInfo();
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+const accessSpreadsheet = async () => {
+  await loadSpreadsheet();
+  // TODO add sheet name to class object to DB
+  return googleDoc.sheetsByTitle['Class TEST']
+};
 
 const addValue = async (data) => {
   const eClass = await ClassDoc.getById(data.classId);
@@ -68,8 +89,25 @@ const addLessonXpToSumXp = async (classId) => {
   })
 
   const isSuccess = await ClassTransaction.saveClass(eClass);
+  await syncGoogleSheet(eClass.students);
   return isSuccess ? eClass : responseMessage.COMMON.ERROR;
 };
+
+const syncGoogleSheet = async (students) => {
+  const sheet = await accessSpreadsheet();
+  const rows = await sheet.getRows();
+  const props = ['LESSON_XP', 'MANA_POINTS', 'PET_FOOD', 'CURSE_POINTS', 'MANA_MODIFIER', 'XP_MODIFIER'];
+  students.forEach(student => {
+    const row = rows.find(row => row[SheetHeaders.NAME] === student.name);
+    if (!row) {
+      return;
+    }
+    props.forEach(async (prop) => {
+      row[SheetHeaders[prop]] = student[StudProp[prop]];
+      await row.save();
+    })
+  })
+}
 
 const getClass = async (classId) => {
   const eClass = await ClassDoc.getById(classId);
