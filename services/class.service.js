@@ -18,10 +18,10 @@ const loadSpreadsheet = async () => {
   }
 }
 
-const accessSpreadsheet = async () => {
+const accessSpreadsheet = async (className) => {
   await loadSpreadsheet();
   // TODO add sheet name to class object to DB
-  return googleDoc.sheetsByTitle['Class TEST']
+  return googleDoc.sheetsByTitle[className];
 };
 
 const addValue = async (data) => {
@@ -43,10 +43,10 @@ const addValue = async (data) => {
     data.pointType === StudProp.MANA_POINTS
   );
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
-    student.skillUsed++;
+    student[StudProp.SKILL_USED]++;
   }
   if (data.isDuel) {
-    student.duels++;
+    student[StudProp.DUEL_COUNT]++;
   }
   const isSuccess = await ClassTransaction.saveClass(eClass);
   return isSuccess ? eClass : responseMessage.COMMON.ERROR;
@@ -89,15 +89,15 @@ const addLessonXpToSumXp = async (classId) => {
   })
 
   const isSuccess = await ClassTransaction.saveClass(eClass);
-  await syncGoogleSheet(eClass.students);
+  await syncGoogleSheet(eClass.students, eClass.name);
   return isSuccess ? eClass : responseMessage.COMMON.ERROR;
 };
 
-const syncGoogleSheet = async (students) => {
-  const sheet = await accessSpreadsheet();
+const syncGoogleSheet = async (students, className) => {
+  const sheet = await accessSpreadsheet(className);
   const rows = await sheet.getRows();
   const props = [
-    'LESSON_XP',
+    'CUMULATIVE_XP',
     'MANA_POINTS',
     'PET_FOOD',
     'CURSE_POINTS',
@@ -135,7 +135,7 @@ const getClasses = async () => {
   const mapped = classes.map((c) => {
     return {
       id: c._id,
-      title: `${c.year}. ${c.name}`
+      title: c.name
     }
   })
   return mapped;

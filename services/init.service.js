@@ -73,9 +73,50 @@ const createClass = async () => {
     duelCount: 0
   }));
 
+  studentList.push(Student({
+    name: `Horváth Andreasz`,
+    level: 'level 1',
+    cumulativeXp: 666,
+    xpModifier: 1.2,
+    lessonXp: 0,
+    manaPoints: 500,
+    manaModifier: 1.5,
+    skillUsed: 0,
+    petFood: 0,
+    cursePoints: 0,
+    duelCount: 0
+  }));
+
+  studentList.push(Student({
+    name: `Norberta`,
+    level: 'level 1',
+    cumulativeXp: 666,
+    xpModifier: 1.2,
+    lessonXp: 0,
+    manaPoints: 500,
+    manaModifier: 1.5,
+    skillUsed: 0,
+    petFood: 0,
+    cursePoints: 0,
+    duelCount: 0
+  }));
+
+  studentList.push(Student({
+    name: `L. Dávid`,
+    level: 'level 1',
+    cumulativeXp: 666,
+    xpModifier: 1.2,
+    lessonXp: 0,
+    manaPoints: 500,
+    manaModifier: 1.5,
+    skillUsed: 0,
+    petFood: 0,
+    cursePoints: 0,
+    duelCount: 0
+  }));
+
   const newClass = Class({
-    name: 'bé',
-    year: 9,
+    name: 'Class TEST',
     students: studentList
   })
 
