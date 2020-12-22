@@ -93,6 +93,7 @@ const addLessonXpToSumXp = async (classId) => {
   return isSuccess ? eClass : responseMessage.COMMON.ERROR;
 };
 
+
 const syncGoogleSheet = async (students) => {
   const sheet = await accessSpreadsheet();
   const rows = await sheet.getRows();
