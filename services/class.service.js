@@ -1,5 +1,8 @@
 const responseMessage = require("../constants/api-response-messages");
 const ClassDoc = require('../persistence/class.doc');
+const Class = require('../models/class.model');
+const Student = require('../models/student.model');
+const CasteDoc = require('../persistence/castes.doc');
 const StudProp = require('../constants/student.properties');
 const SheetHeaders = require('../constants/sheet.headers');
 const ClassTransaction = require('../persistence/class.transactions');
@@ -141,10 +144,51 @@ const getClasses = async () => {
   return mapped;
 };
 
+const getCastes = async () => {
+  const castesObj = await CasteDoc.getCastes();
+  if (castesObj === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  return castesObj.castes;
+};
+
+const createClass = async (className, students) => {
+  const studentList = [];
+  students.forEach(student => {
+    studentList.push(Student({
+      [StudProp.NAME]: student.name,
+      [StudProp.CASTE]: student.caste,
+      [StudProp.LEVEL]: 1,
+      [StudProp.CUMULATIVE_XP]: 0,
+      [StudProp.XP_MODIFIER]: 1,
+      [StudProp.LESSON_XP]: 0,
+      [StudProp.MANA_POINTS]: 0,
+      [StudProp.MANA_MODIFIER]: 1,
+      [StudProp.SKILL_USED]: 0,
+      [StudProp.PET_FOOD]: 0,
+      [StudProp.CURSE_POINTS]: 0,
+      [StudProp.DUEL_COUNT]: 0,
+    }))
+  })
+  const newClass = Class({
+    name: className,
+    students: studentList
+  })
+  try {
+    await newClass.save();
+    return responseMessage.CLASS.CREATE_SUCCESS;
+  } catch (err) {
+    console.log(err);
+    return responseMessage.CLASS.CREATE_FAIL;
+  }
+}
+
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
   getClass: getClass,
   getClasses: getClasses,
-  addValueToAll: addValueToAll
+  addValueToAll: addValueToAll,
+  getCastes: getCastes,
+  createClass: createClass
 };

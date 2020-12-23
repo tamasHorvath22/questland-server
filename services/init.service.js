@@ -1,5 +1,8 @@
 const Student = require('../models/student.model');
 const Class = require('../models/class.model');
+const Castes = require('../models/castes.model');
+const Caste = require('../models/caste.model');
+const CasteEnum = require('../constants/castes');
 
 const createClass = async () => {
   const studentList = [];
@@ -123,6 +126,29 @@ const createClass = async () => {
   await newClass.save();
 }
 
+const createCastes = async () => {
+  const casteList = []
+  const castes = Object.values(CasteEnum);
+  castes.forEach(caste => {
+    casteList.push(Caste({
+      name: caste,
+      label: capitalize(caste)
+    }))
+  })
+
+  const castesObj = Castes({
+    castes: casteList
+  })
+  await castesObj.save();
+}
+
+const capitalize = (word) => {
+  const first = word.charAt(0).toUpperCase();
+  const end = word.substring(1).toLowerCase();
+  return `${first}${end}`;
+}
+
 module.exports = {
-  createClass: createClass
+  createClass: createClass,
+  createCastes: createCastes
 };

@@ -30,4 +30,8 @@ module.exports = Object.freeze({
     SHEET_DOES_NOT_EXIST: "SHEET_DOES_NOT_EXIST",
     NO_SUCH_CLASS: "NO_SUCH_CLASS",
   },
+  CLASS: {
+    CREATE_SUCCESS: 'CREATE_SUCCESS',
+    CREATE_FAIL: 'CREATE_FAIL'
+  }
 });

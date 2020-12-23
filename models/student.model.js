@@ -5,6 +5,7 @@ const StudProp = require('../constants/student.properties');
 
 const studentSchema = new Schema({
   [StudProp.NAME]: { type : String, required: true },
+  [StudProp.CASTE]: { type : String, required: true },
   [StudProp.LEVEL]: { type : String, required: true },
   [StudProp.CUMULATIVE_XP]: { type : Number, required: true },
   [StudProp.XP_MODIFIER]: { type : Number, required: true },
