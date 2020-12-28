@@ -57,7 +57,7 @@ const addValue = async (data) => {
 
 const countNewValue = (oldValue, incomingValue, modifier, isMana) => {
   if (modifier) {
-    incomingValue *= modifier;
+    incomingValue *= (100 + modifier) / 100;
   }
   let newValue = oldValue + incomingValue;
   if (isMana && newValue > 600) {
