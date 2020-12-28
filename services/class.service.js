@@ -153,12 +153,20 @@ const getCastes = async () => {
 };
 
 const createClass = async (className, students) => {
+  if (await checkSheetName(className)) {
+    return responseMessage.CLASS.NAME_TAKEN;
+  }
   const isSaveToDbSuccess = await createClassToDb(className, students);
   if (isSaveToDbSuccess) {
     await createSheetForNewClass(className, students);
     return responseMessage.CLASS.CREATE_SUCCESS;
   }
   return responseMessage.CLASS.CREATE_FAIL;
+}
+
+const checkSheetName = async (className) => {
+  await loadSpreadsheet();
+  return googleDoc.sheetsByTitle[className];
 }
 
 const createSheetForNewClass = async (className, students) => {
@@ -186,10 +194,10 @@ const createClassToDb = async (className, students) => {
       [StudProp.CASTE]: student.caste,
       [StudProp.LEVEL]: 1,
       [StudProp.CUMULATIVE_XP]: 0,
-      [StudProp.XP_MODIFIER]: 1,
+      [StudProp.XP_MODIFIER]: 0,
       [StudProp.LESSON_XP]: 0,
       [StudProp.MANA_POINTS]: 0,
-      [StudProp.MANA_MODIFIER]: 1,
+      [StudProp.MANA_MODIFIER]: 0,
       [StudProp.SKILL_COUNTER]: 0,
       [StudProp.PET_FOOD]: 0,
       [StudProp.CURSE_POINTS]: 0,

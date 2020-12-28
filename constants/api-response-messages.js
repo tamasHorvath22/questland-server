@@ -32,6 +32,7 @@ module.exports = Object.freeze({
   },
   CLASS: {
     CREATE_SUCCESS: 'CREATE_SUCCESS',
-    CREATE_FAIL: 'CREATE_FAIL'
+    CREATE_FAIL: 'CREATE_FAIL',
+    NAME_TAKEN: 'NAME_TAKEN'
   }
 });
