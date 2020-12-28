@@ -46,7 +46,7 @@ const addValue = async (data) => {
     data.pointType === StudProp.MANA_POINTS
   );
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
-    student[StudProp.SKILL_USED]++;
+    student[StudProp.SKILL_COUNTER]++;
   }
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
@@ -153,6 +153,32 @@ const getCastes = async () => {
 };
 
 const createClass = async (className, students) => {
+  const isSaveToDbSuccess = await createClassToDb(className, students);
+  if (isSaveToDbSuccess) {
+    await createSheetForNewClass(className, students);
+    return responseMessage.CLASS.CREATE_SUCCESS;
+  }
+  return responseMessage.CLASS.CREATE_FAIL;
+}
+
+const createSheetForNewClass = async (className, students) => {
+  await loadSpreadsheet();
+  await googleDoc.addSheet({
+    headerValues: Object.values(SheetHeaders),
+    title: className,
+  });
+  const sheet = googleDoc.sheetsByTitle[className];
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    await sheet.addRow({
+      [SheetHeaders.NAME]: student.name,
+      [SheetHeaders.CLASS]: student.caste,
+      [SheetHeaders.LEVEL]: 1
+    });
+  }
+}
+
+const createClassToDb = async (className, students) => {
   const studentList = [];
   students.forEach(student => {
     studentList.push(Student({
@@ -164,7 +190,7 @@ const createClass = async (className, students) => {
       [StudProp.LESSON_XP]: 0,
       [StudProp.MANA_POINTS]: 0,
       [StudProp.MANA_MODIFIER]: 1,
-      [StudProp.SKILL_USED]: 0,
+      [StudProp.SKILL_COUNTER]: 0,
       [StudProp.PET_FOOD]: 0,
       [StudProp.CURSE_POINTS]: 0,
       [StudProp.DUEL_COUNT]: 0,
@@ -176,10 +202,10 @@ const createClass = async (className, students) => {
   })
   try {
     await newClass.save();
-    return responseMessage.CLASS.CREATE_SUCCESS;
+    return true;
   } catch (err) {
     console.log(err);
-    return responseMessage.CLASS.CREATE_FAIL;
+    return false;
   }
 }
 

@@ -1,6 +1,7 @@
 module.exports = Object.freeze({
-  ID: "ID",
   NAME: "Name",
+  CLASS: 'Class',
+  LEVEL: 'Level',
   CUMULATIVE_XP: "CUMULATIVE XP",
   LESSON_XP: "LESSON XP",
   XP_MODIFIER: "XP\nmodifiers",

@@ -12,7 +12,7 @@ const studentSchema = new Schema({
   [StudProp.LESSON_XP]: { type : Number, required: true },
   [StudProp.MANA_POINTS]: { type : Number, required: true },
   [StudProp.MANA_MODIFIER]: { type : Number, required: true },
-  [StudProp.SKILL_USED]: { type : Number, required: true },
+  [StudProp.SKILL_COUNTER]: { type : Number, required: true },
   [StudProp.PET_FOOD]: { type : Number, required: true },
   [StudProp.CURSE_POINTS]: { type : Number, required: true },
   [StudProp.DUEL_COUNT]: { type : Number, required: true },
