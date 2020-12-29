@@ -3,8 +3,8 @@ const responseMessage = require('../constants/api-response-messages');
 
 module.exports = {
   getById: getById,
-  getByname: getByname,
-  getAll: getAll
+  getAll: getAll,
+  remove: remove
 }
 
 async function getById(id) {
@@ -25,9 +25,10 @@ async function getAll() {
   }
 }
 
-async function getByname(username) {
+async function remove(className) {
   try {
-    return await Class.findOne({ username: username }).exec();
+    const eClass = Class.findOne({ name: className })
+    await eClass.remove().exec();
   } catch(err) {
     console.error(err);
     return responseMessage.DATABASE.ERROR;

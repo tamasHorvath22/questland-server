@@ -43,6 +43,17 @@ module.exports = function (app) {
 
   /* 
     request: 
+    {
+      classId: the ID of class
+      students: the list of new students
+    }
+  */
+  app.post("/add-students", jsonParser, async (req, res) => {
+    res.send(await ClassService.addStudents(req.body.classId, req.body.students));
+  });
+
+  /* 
+    request: 
     { 
       classId: the id of the class
     }

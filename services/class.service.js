@@ -16,8 +16,10 @@ const loadSpreadsheet = async () => {
       private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n")
     });
     await googleDoc.loadInfo();
+    return true;
   } catch (err) {
     console.log(err);
+    return false;
   }
 }
 
@@ -158,9 +160,12 @@ const createClass = async (className) => {
   }
   const isSaveToDbSuccess = await createClassToDb(className);
   if (isSaveToDbSuccess) {
-    await createSheetForNewClass(className);
+    const isSheetCreated = await createSheetForNewClass(className);
+    if (!isSheetCreated) {
+      ClassDoc.remove(className);
+      return responseMessage.CLASS.CREATE_FAIL;
+    }
     return await getClasses();
-    // return responseMessage.CLASS.CREATE_SUCCESS;
   }
   return responseMessage.CLASS.CREATE_FAIL;
 }
@@ -171,40 +176,75 @@ const checkSheetName = async (className) => {
 }
 
 const createSheetForNewClass = async (className) => {
-  await loadSpreadsheet();
-  await googleDoc.addSheet({
-    headerValues: Object.values(SheetHeaders),
-    title: className
-  });
-  // const sheet = googleDoc.sheetsByTitle[className];
-  // for (let i = 0; i < students.length; i++) {
-  //   const student = students[i];
-  //   await sheet.addRow({
-  //     [SheetHeaders.NAME]: student.name,
-  //     [SheetHeaders.CLASS]: student.caste,
-  //     [SheetHeaders.LEVEL]: 1
-  //   });
-  // }
+  try {
+    await loadSpreadsheet();
+    await googleDoc.addSheet({
+      headerValues: Object.values(SheetHeaders),
+      title: className
+    });
+    return true;
+  } catch (err) {
+    console.log(err);
+    return false;
+  }
+}
+
+const addStudents = async (classId, students) => {
+  const eClass = await ClassDoc.getById(classId);
+  const studentList = [];
+  students.forEach(student => {
+    studentList.push(Student({
+      [StudProp.NAME]: student.name,
+      [StudProp.CASTE]: student.caste,
+      [StudProp.LEVEL]: 1,
+      [StudProp.CUMULATIVE_XP]: 0,
+      [StudProp.XP_MODIFIER]: 0,
+      [StudProp.LESSON_XP]: 0,
+      [StudProp.MANA_POINTS]: 0,
+      [StudProp.MANA_MODIFIER]: 0,
+      [StudProp.SKILL_COUNTER]: 0,
+      [StudProp.PET_FOOD]: 0,
+      [StudProp.CURSE_POINTS]: 0,
+      [StudProp.DUEL_COUNT]: 0,
+    }))
+  })
+  eClass.students.push(...studentList);
+  const isSaveSuccess = await ClassTransaction.saveClass(eClass);
+  if (isSaveSuccess) {
+    const areStudentsAddedToSheet = await addStudentsToSheet(eClass.name, students);
+    if (!areStudentsAddedToSheet) {
+      for (let i = 0; i < eClass.students.length; i++) {
+        const dbStudent = eClass.students[i];
+        if (students.find(student => student.name === dbStudent.name)) {
+          eClass.students.splice(i, 1);
+        }
+      }
+      await ClassTransaction.saveClass(eClass);
+      return responseMessage.CLASS.ADD_STUDENT_FAIL;
+    }
+    return await getClass(classId);
+  }
+  return responseMessage.CLASS.ADD_STUDENT_FAIL;
+}
+
+const addStudentsToSheet = async (className, students) => {
+  const isSheetLoaded = await loadSpreadsheet();
+  if (!isSheetLoaded) {
+    return false;
+  }
+  const sheet = googleDoc.sheetsByTitle[className];
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    await sheet.addRow({
+      [SheetHeaders.NAME]: student.name,
+      [SheetHeaders.CLASS]: student.caste,
+      [SheetHeaders.LEVEL]: 1
+    });
+  }
+  return true;
 }
 
 const createClassToDb = async (className) => {
-  // const studentList = [];
-  // students.forEach(student => {
-  //   studentList.push(Student({
-  //     [StudProp.NAME]: student.name,
-  //     [StudProp.CASTE]: student.caste,
-  //     [StudProp.LEVEL]: 1,
-  //     [StudProp.CUMULATIVE_XP]: 0,
-  //     [StudProp.XP_MODIFIER]: 0,
-  //     [StudProp.LESSON_XP]: 0,
-  //     [StudProp.MANA_POINTS]: 0,
-  //     [StudProp.MANA_MODIFIER]: 0,
-  //     [StudProp.SKILL_COUNTER]: 0,
-  //     [StudProp.PET_FOOD]: 0,
-  //     [StudProp.CURSE_POINTS]: 0,
-  //     [StudProp.DUEL_COUNT]: 0,
-  //   }))
-  // })
   const newClass = Class({
     name: className,
     students: []
@@ -225,5 +265,6 @@ module.exports = {
   getClasses: getClasses,
   addValueToAll: addValueToAll,
   getCastes: getCastes,
-  createClass: createClass
+  createClass: createClass,
+  addStudents: addStudents
 };
