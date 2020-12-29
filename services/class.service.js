@@ -152,14 +152,15 @@ const getCastes = async () => {
   return castesObj.castes;
 };
 
-const createClass = async (className, students) => {
+const createClass = async (className) => {
   if (await checkSheetName(className)) {
     return responseMessage.CLASS.NAME_TAKEN;
   }
-  const isSaveToDbSuccess = await createClassToDb(className, students);
+  const isSaveToDbSuccess = await createClassToDb(className);
   if (isSaveToDbSuccess) {
-    await createSheetForNewClass(className, students);
-    return responseMessage.CLASS.CREATE_SUCCESS;
+    await createSheetForNewClass(className);
+    return await getClasses();
+    // return responseMessage.CLASS.CREATE_SUCCESS;
   }
   return responseMessage.CLASS.CREATE_FAIL;
 }
@@ -169,44 +170,44 @@ const checkSheetName = async (className) => {
   return googleDoc.sheetsByTitle[className];
 }
 
-const createSheetForNewClass = async (className, students) => {
+const createSheetForNewClass = async (className) => {
   await loadSpreadsheet();
   await googleDoc.addSheet({
     headerValues: Object.values(SheetHeaders),
-    title: className,
+    title: className
   });
-  const sheet = googleDoc.sheetsByTitle[className];
-  for (let i = 0; i < students.length; i++) {
-    const student = students[i];
-    await sheet.addRow({
-      [SheetHeaders.NAME]: student.name,
-      [SheetHeaders.CLASS]: student.caste,
-      [SheetHeaders.LEVEL]: 1
-    });
-  }
+  // const sheet = googleDoc.sheetsByTitle[className];
+  // for (let i = 0; i < students.length; i++) {
+  //   const student = students[i];
+  //   await sheet.addRow({
+  //     [SheetHeaders.NAME]: student.name,
+  //     [SheetHeaders.CLASS]: student.caste,
+  //     [SheetHeaders.LEVEL]: 1
+  //   });
+  // }
 }
 
-const createClassToDb = async (className, students) => {
-  const studentList = [];
-  students.forEach(student => {
-    studentList.push(Student({
-      [StudProp.NAME]: student.name,
-      [StudProp.CASTE]: student.caste,
-      [StudProp.LEVEL]: 1,
-      [StudProp.CUMULATIVE_XP]: 0,
-      [StudProp.XP_MODIFIER]: 0,
-      [StudProp.LESSON_XP]: 0,
-      [StudProp.MANA_POINTS]: 0,
-      [StudProp.MANA_MODIFIER]: 0,
-      [StudProp.SKILL_COUNTER]: 0,
-      [StudProp.PET_FOOD]: 0,
-      [StudProp.CURSE_POINTS]: 0,
-      [StudProp.DUEL_COUNT]: 0,
-    }))
-  })
+const createClassToDb = async (className) => {
+  // const studentList = [];
+  // students.forEach(student => {
+  //   studentList.push(Student({
+  //     [StudProp.NAME]: student.name,
+  //     [StudProp.CASTE]: student.caste,
+  //     [StudProp.LEVEL]: 1,
+  //     [StudProp.CUMULATIVE_XP]: 0,
+  //     [StudProp.XP_MODIFIER]: 0,
+  //     [StudProp.LESSON_XP]: 0,
+  //     [StudProp.MANA_POINTS]: 0,
+  //     [StudProp.MANA_MODIFIER]: 0,
+  //     [StudProp.SKILL_COUNTER]: 0,
+  //     [StudProp.PET_FOOD]: 0,
+  //     [StudProp.CURSE_POINTS]: 0,
+  //     [StudProp.DUEL_COUNT]: 0,
+  //   }))
+  // })
   const newClass = Class({
     name: className,
-    students: studentList
+    students: []
   })
   try {
     await newClass.save();

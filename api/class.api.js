@@ -35,11 +35,10 @@ module.exports = function (app) {
     request: 
     {
       className: the name of the class
-      students: array of students
     }
   */
   app.post("/create-class", jsonParser, async (req, res) => {
-    res.send(await ClassService.createClass(req.body.className, req.body.students));
+    res.send(await ClassService.createClass(req.body.className));
   });
 
   /* 
