@@ -3,5 +3,6 @@ module.exports = Object.freeze({
   REALM: 'Realm',
   STUDENT: 'Student',
   CLASSES: 'CLASSES',
-  CLASS: 'CLASS'
+  CLASS: 'CLASS',
+  CLAN: 'CLAN'
 })

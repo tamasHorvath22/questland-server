@@ -6,8 +6,8 @@ const saveRealm = async (realm) => {
   realm.markModified('students');
   transaction.insert(schemas.REALM, realm);
   try {
-    await transaction.run();
-    return true
+    const result = await transaction.run();
+    return result[0];
   } catch (err) {
     console.error(err);
     await transaction.rollback();

@@ -1,6 +1,7 @@
 const responseMessage = require("../constants/api-response-messages");
 const RealmDoc = require('../persistence/realm.doc');
 const Realm = require('../models/realm.model');
+const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
 const ClassDoc = require('../persistence/classes.doc');
 const StudProp = require('../constants/student.properties');
@@ -53,8 +54,8 @@ const addValue = async (data) => {
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
   }
-  const isSuccess = await RealmTransaction.saveRealm(realm);
-  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.COMMON.ERROR;
 };
 
 const countNewValue = (oldValue, incomingValue, modifier, isMana) => {
@@ -78,8 +79,8 @@ const addValueToAll = async (data) => {
     student[data.pointType] += data.value
   })
 
-  const isSuccess = await RealmTransaction.saveRealm(realm);
-  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.COMMON.ERROR;
 }
 
 const addLessonXpToSumXp = async (realmId) => {
@@ -93,9 +94,9 @@ const addLessonXpToSumXp = async (realmId) => {
     student[StudProp.LESSON_XP] = 0;
   })
 
-  const isSuccess = await RealmTransaction.saveRealm(realm);
+  const result = await RealmTransaction.saveRealm(realm);
   await syncGoogleSheet(realm.students, realm.name);
-  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+  return result ? result : responseMessage.COMMON.ERROR;
 };
 
 const syncGoogleSheet = async (students, realmName) => {
@@ -191,6 +192,10 @@ const createSheetForNewRealm = async (realmName) => {
 
 const addStudents = async (realmId, students) => {
   const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+
   const studentList = [];
   students.forEach(student => {
     studentList.push(Student({
@@ -258,6 +263,28 @@ const createRealmToDb = async (realmName) => {
   }
 }
 
+const createClans = async (realmId, clans) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const clanList = [];
+  clans.forEach(clan => {
+    clanList.push(Clan({
+      name: clan.name,
+      gloryPoints: 0,
+      level: 1,
+      students: []
+    }))
+  });
+  realm.clans.push(...clanList);
+  const result = await RealmTransaction.saveRealm(realm);
+  if (result) {
+    return result;
+  }
+  return responseMessage.REALM.CLAN_ADD_FAIL;
+}
+
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
@@ -266,5 +293,6 @@ module.exports = {
   addValueToAll: addValueToAll,
   getClasses: getClasses,
   createRealm: createRealm,
-  addStudents: addStudents
+  addStudents: addStudents,
+  createClans: createClans
 };
