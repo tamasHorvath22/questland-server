@@ -1,6 +1,6 @@
 module.exports = Object.freeze({
   USER: 'User',
-  CLASS: 'Class',
+  REALM: 'Realm',
   STUDENT: 'Student',
   CASTES: 'Castes',
   CASTE: 'Caste'

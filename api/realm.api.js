@@ -1,13 +1,13 @@
 const bodyParser = require("body-parser");
 const jsonParser = bodyParser.json();
-const ClassService = require("../services/class.service");
+const RealmService = require("../services/realm.service");
 
 module.exports = function (app) {
 
   /* 
     request: 
     { 
-      classId: the id of the class,
+      realmId: the id of the realm,
       studentId: the id of the student,
       pointType: the type of the value,
       value: data to add the current data,
@@ -15,63 +15,63 @@ module.exports = function (app) {
     }
   */
   app.post("/add-value", jsonParser, async (req, res) => {
-    res.send(await ClassService.addValue(req.body, res));
+    res.send(await RealmService.addValue(req.body, res));
   });
 
 
   /* 
     request: 
     {
-      classId: the id of the class,
+      realmId: the id of the realm,
       pointType: the type of the value,
       value: data to add the current data
     }
   */
   app.post("/add-value-to-all", jsonParser, async (req, res) => {
-    res.send(await ClassService.addValueToAll(req.body, res));
+    res.send(await RealmService.addValueToAll(req.body, res));
   });
 
   /* 
     request: 
     {
-      className: the name of the class
+      realmName: the name of the realm
     }
   */
-  app.post("/create-class", jsonParser, async (req, res) => {
-    res.send(await ClassService.createClass(req.body.className));
+  app.post("/create-realm", jsonParser, async (req, res) => {
+    res.send(await RealmService.createRealm(req.body.realmName));
   });
 
   /* 
     request: 
     {
-      classId: the ID of class
+      realmId: the ID of realm
       students: the list of new students
     }
   */
   app.post("/add-students", jsonParser, async (req, res) => {
-    res.send(await ClassService.addStudents(req.body.classId, req.body.students));
+    res.send(await RealmService.addStudents(req.body.realmId, req.body.students));
   });
 
   /* 
     request: 
     { 
-      classId: the id of the class
+      realmId: the id of the realm
     }
   */
   app.post("/add-lesson-xp-to-cumulative-xp", jsonParser, async (req, res) => {
-    res.send(await ClassService.addLessonXpToSumXp(req.body.classId));
+    res.send(await RealmService.addLessonXpToSumXp(req.body.realmId));
   });
 
-  app.get("/classes/:classId", jsonParser, async (req, res) => {
-    res.send(await ClassService.getClass(req.params.classId));
+  app.get("/realms/:realmId", jsonParser, async (req, res) => {
+    res.send(await RealmService.getRealm(req.params.realmId));
   });
 
-  app.get("/classes", jsonParser, async (req, res) => {
-    res.send(await ClassService.getClasses(res));
+  app.get("/realms", jsonParser, async (req, res) => {
+    res.send(await RealmService.getRealms(res));
   });
 
   app.get("/castes", jsonParser, async (req, res) => {
-    res.send(await ClassService.getCastes());
+    res.send(await RealmService.getCastes());
   });
 
   // app.post("/sheets", jsonParser, async (req, res) => {

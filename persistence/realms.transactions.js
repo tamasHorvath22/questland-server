@@ -1,10 +1,10 @@
 const Transaction = require('mongoose-transactions');
 const schemas = require('../constants/schemas');
 
-const saveClass = async (eClass) => {
+const saveRealm = async (realm) => {
   const transaction = new Transaction(true);
-  eClass.markModified('students');
-  transaction.insert(schemas.CLASS, eClass);
+  realm.markModified('students');
+  transaction.insert(schemas.REALM, realm);
   try {
     await transaction.run();
     return true
@@ -16,5 +16,5 @@ const saveClass = async (eClass) => {
 }
 
 module.exports = {
-  saveClass: saveClass
+  saveRealm: saveRealm
 }
