@@ -33,6 +33,27 @@ module.exports = function (app) {
 
   /* 
     request: 
+    {
+      className: the name of the class
+    }
+  */
+  app.post("/create-class", jsonParser, async (req, res) => {
+    res.send(await ClassService.createClass(req.body.className));
+  });
+
+  /* 
+    request: 
+    {
+      classId: the ID of class
+      students: the list of new students
+    }
+  */
+  app.post("/add-students", jsonParser, async (req, res) => {
+    res.send(await ClassService.addStudents(req.body.classId, req.body.students));
+  });
+
+  /* 
+    request: 
     { 
       classId: the id of the class
     }
@@ -47,6 +68,10 @@ module.exports = function (app) {
 
   app.get("/classes", jsonParser, async (req, res) => {
     res.send(await ClassService.getClasses(res));
+  });
+
+  app.get("/castes", jsonParser, async (req, res) => {
+    res.send(await ClassService.getCastes());
   });
 
   // app.post("/sheets", jsonParser, async (req, res) => {

@@ -6,8 +6,9 @@ module.exports = Object.freeze({
   LESSON_XP: 'lessonXp',
   MANA_POINTS: 'manaPoints',
   MANA_MODIFIER: 'manaModifier',
-  SKILL_USED: 'skillUsed',
+  SKILL_COUNTER: 'skillUsed',
   PET_FOOD: 'petFood',
   CURSE_POINTS: 'cursePoints',
-  DUELS: 'duels'
+  DUEL_COUNT: 'duelCount',
+  CASTE: 'caste'
 });

@@ -1,9 +1,10 @@
 module.exports = Object.freeze({
-  ID: "ID",
   NAME: "Name",
+  CLASS: 'Class',
+  LEVEL: 'Level',
   CUMULATIVE_XP: "CUMULATIVE XP",
   LESSON_XP: "LESSON XP",
-  XP_MULTIPLIER: "XP\nmodifiers",
+  XP_MODIFIER: "XP\nmodifiers",
   MANA_POINTS: "MANA POINTS",
   MANA_MODIFIER: 'MANA\nmodifiers',
   PET_FOOD: "Pet Food",

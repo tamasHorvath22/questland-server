@@ -10,7 +10,7 @@ const saveClass = async (eClass) => {
     return true
   } catch (err) {
     console.error(err);
-    transaction.rollback();
+    await transaction.rollback();
     return false;
   }
 }
