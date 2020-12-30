@@ -34,6 +34,28 @@ module.exports = function (app) {
   /* 
     request: 
     {
+      realmId: the id of the realm,
+      value: data to add the current data
+    }
+  */
+  app.post("/change-xp-modifier", jsonParser, async (req, res) => {
+    res.send(await RealmService.changeXpModifier(req.body, res));
+  });
+
+  /* 
+    request: 
+    {
+      realmId: the id of the realm,
+      value: data to add the current data
+    }
+  */
+  app.post("/change-mana-modifier", jsonParser, async (req, res) => {
+    res.send(await RealmService.changeManaModifier(req.body, res));
+  });
+
+  /* 
+    request: 
+    {
       realmName: the name of the realm
     }
   */

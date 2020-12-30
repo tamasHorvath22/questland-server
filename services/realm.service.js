@@ -98,6 +98,30 @@ const addLessonXpToSumXp = async (realmId) => {
   return isSuccess ? realm : responseMessage.COMMON.ERROR;
 };
 
+const changeXpModifier = async (data) => {
+  const realm = await RealmDoc.getById(data.realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const student = realm.students.find(s => s._id.equals(data.studentId));
+
+  student.XP_MODIFIER = data.XP_MODIFIER;
+  const isSuccess = await RealmTransaction.saveRealm(realm);
+  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+};
+
+const changeManaModifier = async (data) => {
+  const realm = await RealmDoc.getById(data.realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const student = realm.students.find(s => s._id.equals(data.studentId));
+
+  student.MANA_MODIFIER = data.MANA_MODIFIER;
+  const isSuccess = await RealmTransaction.saveRealm(realm);
+  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+};
+
 const syncGoogleSheet = async (students, realmName) => {
   const sheet = await accessSpreadsheet(realmName);
   const rows = await sheet.getRows();
@@ -266,5 +290,7 @@ module.exports = {
   addValueToAll: addValueToAll,
   getClasses: getClasses,
   createRealm: createRealm,
-  addStudents: addStudents
+  addStudents: addStudents,
+  changeManaModifier: changeManaModifier,
+  changeXpModifier: changeXpModifier
 };
