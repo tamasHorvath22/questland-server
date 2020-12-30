@@ -70,8 +70,8 @@ module.exports = function (app) {
     res.send(await RealmService.getRealms(res));
   });
 
-  app.get("/castes", jsonParser, async (req, res) => {
-    res.send(await RealmService.getCastes());
+  app.get("/classes", jsonParser, async (req, res) => {
+    res.send(await RealmService.getClasses());
   });
 
   // app.post("/sheets", jsonParser, async (req, res) => {

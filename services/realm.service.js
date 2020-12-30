@@ -2,7 +2,7 @@ const responseMessage = require("../constants/api-response-messages");
 const RealmDoc = require('../persistence/realm.doc');
 const Realm = require('../models/realm.model');
 const Student = require('../models/student.model');
-const CasteDoc = require('../persistence/castes.doc');
+const ClassDoc = require('../persistence/classes.doc');
 const StudProp = require('../constants/student.properties');
 const SheetHeaders = require('../constants/sheet.headers');
 const RealmTransaction = require('../persistence/realms.transactions');
@@ -146,12 +146,12 @@ const getRealms = async () => {
   return mapped;
 };
 
-const getCastes = async () => {
-  const castesObj = await CasteDoc.getCastes();
-  if (castesObj === responseMessage.DATABASE.ERROR) {
+const getClasses = async () => {
+  const classesObj = await ClassDoc.getClasses();
+  if (classesObj === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  return castesObj.castes;
+  return classesObj.classes;
 };
 
 const createRealm = async (realmName) => {
@@ -195,7 +195,7 @@ const addStudents = async (realmId, students) => {
   students.forEach(student => {
     studentList.push(Student({
       [StudProp.NAME]: student.name,
-      [StudProp.CASTE]: student.caste,
+      [StudProp.CLASS]: student.class,
       [StudProp.LEVEL]: 1,
       [StudProp.CUMULATIVE_XP]: 0,
       [StudProp.XP_MODIFIER]: 0,
@@ -237,7 +237,7 @@ const addStudentsToSheet = async (realmName, students) => {
     const student = students[i];
     await sheet.addRow({
       [SheetHeaders.NAME]: student.name,
-      [SheetHeaders.CLASS]: student.caste,
+      [SheetHeaders.CLASS]: student.class,
       [SheetHeaders.LEVEL]: 1
     });
   }
@@ -264,7 +264,7 @@ module.exports = {
   getRealm: getRealm,
   getRealms: getRealms,
   addValueToAll: addValueToAll,
-  getCastes: getCastes,
+  getClasses: getClasses,
   createRealm: createRealm,
   addStudents: addStudents
 };

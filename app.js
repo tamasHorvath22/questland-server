@@ -14,5 +14,5 @@ const port = config.getServerDetails().PORT || 8080;
 app.listen(port);
 console.log(`server started on port: ${port}`);
 
-InitService.createRealm();
-// InitService.createCastes();
+// InitService.createRealm();
+// InitService.createClasses();
