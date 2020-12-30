@@ -1,13 +1,13 @@
-const Castes = require('../models/castes.model');
+const Classes = require('../models/classes.model');
 const responseMessage = require('../constants/api-response-messages');
 
 module.exports = {
-  getCastes: getCastes
+  getClasses: getClasses
 }
 
-async function getCastes() {
+async function getClasses() {
   try {
-    const elements = await Castes.find({}).exec();
+    const elements = await Classes.find({}).exec();
     if (!elements.length) {
       return responseMessage.DATABASE.ERROR;
     }

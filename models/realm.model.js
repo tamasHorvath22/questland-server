@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 const schemas = require('../constants/schemas');
 const Schema = mongoose.Schema;
 
-const casteSchema = new Schema({
+const realmSchema = new Schema({
   name: { type : String, required: true },
-  label: { type : String, required: true }
+  students: { type : Array, required: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model(schemas.CASTE, casteSchema);
+module.exports = mongoose.model(schemas.REALM, realmSchema);
+

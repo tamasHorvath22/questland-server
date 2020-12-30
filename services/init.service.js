@@ -1,10 +1,10 @@
 const Student = require('../models/student.model');
+const Realm = require('../models/realm.model');
+const Classes = require('../models/classes.model');
 const Class = require('../models/class.model');
-const Castes = require('../models/castes.model');
-const Caste = require('../models/caste.model');
-const CasteEnum = require('../constants/castes');
+const ClassEnum = require('../constants/classes');
 
-const createClass = async () => {
+const createRealm = async () => {
   const studentList = [];
   studentList.push(Student({
     name: `Józsi`,
@@ -118,28 +118,28 @@ const createClass = async () => {
     duelCount: 0
   }));
 
-  const newClass = Class({
+  const newRealm = Realm({
     name: 'Class TEST',
     students: studentList
   })
 
-  await newClass.save();
+  await newRealm.save();
 }
 
-const createCastes = async () => {
-  const casteList = []
-  const castes = Object.values(CasteEnum);
-  castes.forEach(caste => {
-    casteList.push(Caste({
-      name: caste,
-      label: capitalize(caste)
+const createClasses = async () => {
+  const classList = []
+  const classes = Object.values(ClassEnum);
+  classes.forEach(className => {
+    classList.push(Class({
+      name: className,
+      label: capitalize(className)
     }))
   })
 
-  const castesObj = Castes({
-    castes: casteList
+  const classessObj = Classes({
+    classes: classList
   })
-  await castesObj.save();
+  await classessObj.save();
 }
 
 const capitalize = (word) => {
@@ -149,6 +149,6 @@ const capitalize = (word) => {
 }
 
 module.exports = {
-  createClass: createClass,
-  createCastes: createCastes
+  createRealm: createRealm,
+  createClasses: createClasses
 };

@@ -1,11 +1,11 @@
 const responseMessage = require("../constants/api-response-messages");
-const ClassDoc = require('../persistence/class.doc');
-const Class = require('../models/class.model');
+const RealmDoc = require('../persistence/realm.doc');
+const Realm = require('../models/realm.model');
 const Student = require('../models/student.model');
-const CasteDoc = require('../persistence/castes.doc');
+const ClassDoc = require('../persistence/classes.doc');
 const StudProp = require('../constants/student.properties');
 const SheetHeaders = require('../constants/sheet.headers');
-const ClassTransaction = require('../persistence/class.transactions');
+const RealmTransaction = require('../persistence/realms.transactions');
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 const googleDoc = new GoogleSpreadsheet("149rWP-JRudGvfVKppuMlOmUxv0fWzqiRGeCZTBJfb-g");
 
@@ -23,18 +23,18 @@ const loadSpreadsheet = async () => {
   }
 }
 
-const accessSpreadsheet = async (className) => {
+const accessSpreadsheet = async (realmName) => {
   await loadSpreadsheet();
-  // TODO add sheet name to class object to DB
-  return googleDoc.sheetsByTitle[className];
+  // TODO add sheet name to realm object to DB
+  return googleDoc.sheetsByTitle[realmName];
 };
 
 const addValue = async (data) => {
-  const eClass = await ClassDoc.getById(data.classId);
-  if (eClass === responseMessage.DATABASE.ERROR) {
+  const realm = await RealmDoc.getById(data.realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const student = eClass.students.find(s => s._id.equals(data.studentId));
+  const student = realm.students.find(s => s._id.equals(data.studentId));
   let modifier;
   if (data.pointType === StudProp.LESSON_XP) {
     modifier = student[StudProp.XP_MODIFIER];
@@ -53,8 +53,8 @@ const addValue = async (data) => {
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
   }
-  const isSuccess = await ClassTransaction.saveClass(eClass);
-  return isSuccess ? eClass : responseMessage.COMMON.ERROR;
+  const isSuccess = await RealmTransaction.saveRealm(realm);
+  return isSuccess ? realm : responseMessage.COMMON.ERROR;
 };
 
 const countNewValue = (oldValue, incomingValue, modifier, isMana) => {
@@ -70,36 +70,36 @@ const countNewValue = (oldValue, incomingValue, modifier, isMana) => {
 }
 
 const addValueToAll = async (data) => {
-  const eClass = await ClassDoc.getById(data.classId);
-  if (eClass === responseMessage.DATABASE.ERROR) {
+  const realm = await RealmDoc.getById(data.realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  eClass.students.forEach(student => {
+  realm.students.forEach(student => {
     student[data.pointType] += data.value
   })
 
-  const isSuccess = await ClassTransaction.saveClass(eClass);
-  return isSuccess ? eClass : responseMessage.COMMON.ERROR;
+  const isSuccess = await RealmTransaction.saveRealm(realm);
+  return isSuccess ? realm : responseMessage.COMMON.ERROR;
 }
 
-const addLessonXpToSumXp = async (classId) => {
-  const eClass = await ClassDoc.getById(classId);
-  if (eClass === responseMessage.DATABASE.ERROR) {
+const addLessonXpToSumXp = async (realmId) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
 
-  eClass.students.forEach(student => {
+  realm.students.forEach(student => {
     student[StudProp.CUMULATIVE_XP] += student[StudProp.LESSON_XP] * student[StudProp.XP_MODIFIER];
     student[StudProp.LESSON_XP] = 0;
   })
 
-  const isSuccess = await ClassTransaction.saveClass(eClass);
-  await syncGoogleSheet(eClass.students, eClass.name);
-  return isSuccess ? eClass : responseMessage.COMMON.ERROR;
+  const isSuccess = await RealmTransaction.saveRealm(realm);
+  await syncGoogleSheet(realm.students, realm.name);
+  return isSuccess ? realm : responseMessage.COMMON.ERROR;
 };
 
-const syncGoogleSheet = async (students, className) => {
-  const sheet = await accessSpreadsheet(className);
+const syncGoogleSheet = async (students, realmName) => {
+  const sheet = await accessSpreadsheet(realmName);
   const rows = await sheet.getRows();
   const props = [
     'CUMULATIVE_XP',
@@ -123,21 +123,21 @@ const syncGoogleSheet = async (students, className) => {
   })
 }
 
-const getClass = async (classId) => {
-  const eClass = await ClassDoc.getById(classId);
-  if (eClass === responseMessage.DATABASE.ERROR) {
+const getRealm = async (realmId) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  return eClass;
+  return realm;
 };
 
-const getClasses = async () => {
+const getRealms = async () => {
   // TODO refactor the properties
-  const classes = await ClassDoc.getAll();
-  if (classes === responseMessage.DATABASE.ERROR) {
+  const realms = await RealmDoc.getAll();
+  if (realms === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const mapped = classes.map((c) => {
+  const mapped = realms.map((c) => {
     return {
       id: c._id,
       title: c.name
@@ -146,41 +146,41 @@ const getClasses = async () => {
   return mapped;
 };
 
-const getCastes = async () => {
-  const castesObj = await CasteDoc.getCastes();
-  if (castesObj === responseMessage.DATABASE.ERROR) {
+const getClasses = async () => {
+  const classesObj = await ClassDoc.getClasses();
+  if (classesObj === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  return castesObj.castes;
+  return classesObj.classes;
 };
 
-const createClass = async (className) => {
-  if (await checkSheetName(className)) {
-    return responseMessage.CLASS.NAME_TAKEN;
+const createRealm = async (realmName) => {
+  if (await checkSheetName(realmName)) {
+    return responseMessage.REALM.NAME_TAKEN;
   }
-  const isSaveToDbSuccess = await createClassToDb(className);
+  const isSaveToDbSuccess = await createRealmToDb(realmName);
   if (isSaveToDbSuccess) {
-    const isSheetCreated = await createSheetForNewClass(className);
+    const isSheetCreated = await createSheetForNewRealm(realmName);
     if (!isSheetCreated) {
-      ClassDoc.remove(className);
-      return responseMessage.CLASS.CREATE_FAIL;
+      RealmDoc.remove(realmName);
+      return responseMessage.REALM.CREATE_FAIL;
     }
-    return await getClasses();
+    return await getRealms();
   }
-  return responseMessage.CLASS.CREATE_FAIL;
+  return responseMessage.REALM.CREATE_FAIL;
 }
 
-const checkSheetName = async (className) => {
+const checkSheetName = async (realmName) => {
   await loadSpreadsheet();
-  return googleDoc.sheetsByTitle[className];
+  return googleDoc.sheetsByTitle[realmName];
 }
 
-const createSheetForNewClass = async (className) => {
+const createSheetForNewRealm = async (realmName) => {
   try {
     await loadSpreadsheet();
     await googleDoc.addSheet({
       headerValues: Object.values(SheetHeaders),
-      title: className
+      title: realmName
     });
     return true;
   } catch (err) {
@@ -189,13 +189,13 @@ const createSheetForNewClass = async (className) => {
   }
 }
 
-const addStudents = async (classId, students) => {
-  const eClass = await ClassDoc.getById(classId);
+const addStudents = async (realmId, students) => {
+  const realm = await RealmDoc.getById(realmId);
   const studentList = [];
   students.forEach(student => {
     studentList.push(Student({
       [StudProp.NAME]: student.name,
-      [StudProp.CASTE]: student.caste,
+      [StudProp.CLASS]: student.class,
       [StudProp.LEVEL]: 1,
       [StudProp.CUMULATIVE_XP]: 0,
       [StudProp.XP_MODIFIER]: 0,
@@ -208,49 +208,49 @@ const addStudents = async (classId, students) => {
       [StudProp.DUEL_COUNT]: 0,
     }))
   })
-  eClass.students.push(...studentList);
-  const isSaveSuccess = await ClassTransaction.saveClass(eClass);
+  realm.students.push(...studentList);
+  const isSaveSuccess = await RealmTransaction.saveRealm(realm);
   if (isSaveSuccess) {
-    const areStudentsAddedToSheet = await addStudentsToSheet(eClass.name, students);
+    const areStudentsAddedToSheet = await addStudentsToSheet(realm.name, students);
     if (!areStudentsAddedToSheet) {
-      for (let i = 0; i < eClass.students.length; i++) {
-        const dbStudent = eClass.students[i];
+      for (let i = 0; i < realm.students.length; i++) {
+        const dbStudent = realm.students[i];
         if (students.find(student => student.name === dbStudent.name)) {
-          eClass.students.splice(i, 1);
+          realm.students.splice(i, 1);
         }
       }
-      await ClassTransaction.saveClass(eClass);
-      return responseMessage.CLASS.ADD_STUDENT_FAIL;
+      await RealmTransaction.saveRealm(realm);
+      return responseMessage.REALM.ADD_STUDENT_FAIL;
     }
-    return await getClass(classId);
+    return await getRealm(realmId);
   }
-  return responseMessage.CLASS.ADD_STUDENT_FAIL;
+  return responseMessage.REALM.ADD_STUDENT_FAIL;
 }
 
-const addStudentsToSheet = async (className, students) => {
+const addStudentsToSheet = async (realmName, students) => {
   const isSheetLoaded = await loadSpreadsheet();
   if (!isSheetLoaded) {
     return false;
   }
-  const sheet = googleDoc.sheetsByTitle[className];
+  const sheet = googleDoc.sheetsByTitle[realmName];
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
     await sheet.addRow({
       [SheetHeaders.NAME]: student.name,
-      [SheetHeaders.CLASS]: student.caste,
+      [SheetHeaders.CLASS]: student.class,
       [SheetHeaders.LEVEL]: 1
     });
   }
   return true;
 }
 
-const createClassToDb = async (className) => {
-  const newClass = Class({
-    name: className,
+const createRealmToDb = async (realmName) => {
+  const newRealm = Realm({
+    name: realmName,
     students: []
   })
   try {
-    await newClass.save();
+    await newRealm.save();
     return true;
   } catch (err) {
     console.log(err);
@@ -261,10 +261,10 @@ const createClassToDb = async (className) => {
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
-  getClass: getClass,
-  getClasses: getClasses,
+  getRealm: getRealm,
+  getRealms: getRealms,
   addValueToAll: addValueToAll,
-  getCastes: getCastes,
-  createClass: createClass,
+  getClasses: getClasses,
+  createRealm: createRealm,
   addStudents: addStudents
 };
