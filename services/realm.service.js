@@ -190,6 +190,17 @@ const createSheetForNewRealm = async (realmName) => {
   }
 }
 
+const modifyRealm = async (realm) => {
+  const realmDb = await RealmDoc.getById(realm._id);
+  if (realmDb === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  realmDb.students = realm.students
+  realmDb.clans = realm.clans
+  const savedRealm = await RealmTransaction.saveRealm(realmDb);
+  return savedRealm ? savedRealm : responseMessage.REALM.MODIFICATION_FAIL;
+}
+
 const addStudents = async (realmId, students) => {
   const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
@@ -201,6 +212,7 @@ const addStudents = async (realmId, students) => {
     studentList.push(Student({
       [StudProp.NAME]: student.name,
       [StudProp.CLASS]: student.class,
+      [StudProp.CLAN]: student.clan,
       [StudProp.LEVEL]: 1,
       [StudProp.CUMULATIVE_XP]: 0,
       [StudProp.XP_MODIFIER]: 0,
@@ -214,20 +226,20 @@ const addStudents = async (realmId, students) => {
     }))
   })
   realm.students.push(...studentList);
-  const isSaveSuccess = await RealmTransaction.saveRealm(realm);
-  if (isSaveSuccess) {
-    const areStudentsAddedToSheet = await addStudentsToSheet(realm.name, students);
-    if (!areStudentsAddedToSheet) {
-      for (let i = 0; i < realm.students.length; i++) {
-        const dbStudent = realm.students[i];
-        if (students.find(student => student.name === dbStudent.name)) {
-          realm.students.splice(i, 1);
-        }
-      }
-      await RealmTransaction.saveRealm(realm);
-      return responseMessage.REALM.ADD_STUDENT_FAIL;
-    }
-    return await getRealm(realmId);
+  const savedRealm = await RealmTransaction.saveRealm(realm);
+  if (savedRealm) {
+    // const areStudentsAddedToSheet = await addStudentsToSheet(realm.name, students);
+    // if (!areStudentsAddedToSheet) {
+    //   for (let i = 0; i < realm.students.length; i++) {
+    //     const dbStudent = realm.students[i];
+    //     if (students.find(student => student.name === dbStudent.name)) {
+    //       realm.students.splice(i, 1);
+    //     }
+    //   }
+    //   await RealmTransaction.saveRealm(realm);
+    //   return responseMessage.REALM.ADD_STUDENT_FAIL;
+    // }
+    return savedRealm;
   }
   return responseMessage.REALM.ADD_STUDENT_FAIL;
 }
@@ -294,5 +306,6 @@ module.exports = {
   getClasses: getClasses,
   createRealm: createRealm,
   addStudents: addStudents,
-  createClans: createClans
+  createClans: createClans,
+  modifyRealm: modifyRealm
 };
