@@ -75,6 +75,16 @@ module.exports = function (app) {
 
   /* 
     request: 
+    {
+      realmId: the ID of realm
+    }
+  */
+  app.post("/sync-sheet", jsonParser, async (req, res) => {
+    res.send(await RealmService.syncSheet(req.body.realmId));
+  });
+
+  /* 
+    request: 
     { 
       realmId: the id of the realm
     }
