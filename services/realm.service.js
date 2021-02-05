@@ -73,13 +73,16 @@ const addLessonXpToSumXp = async (realmId) => {
   }
 
   realm.students.forEach(student => {
-    student[StudProp.CUMULATIVE_XP] += student[StudProp.LESSON_XP] * student[StudProp.XP_MODIFIER];
+    student[StudProp.CUMULATIVE_XP] += student[StudProp.LESSON_XP];
     student[StudProp.LESSON_XP] = 0;
   })
 
   const result = await RealmTransaction.saveRealm(realm);
-  // await syncGoogleSheet(realm.students, realm.name);
-  return result ? result : responseMessage.COMMON.ERROR;
+  if (!result) {
+    return responseMessage.COMMON.ERROR;
+  }
+  await syncSheet(realmId);
+  return result;
 };
 
 const syncSheet = async (realmId) => {
@@ -89,8 +92,11 @@ const syncSheet = async (realmId) => {
   }
   const sheet = await SheetService.accessSpreadsheet(realm.name);
   const rows = await sheet.getRows();
-  const numOfRows = realm.students.length + realm.clans.length;
-  if (rows.length !== numOfRows) {
+  const clansInUse = getClansInUseCount(realm.students)
+  const numOfRows = realm.students.length + clansInUse;
+  const clanAddedToStudent = isClanAddedToStudent(realm.students, rows);
+  
+  if (rows.length !== numOfRows || clanAddedToStudent) {
     await sheet.delete();
     const isSheetCreated = await createSheetForNewRealm(realm.name);
     if (!isSheetCreated) {
@@ -102,6 +108,34 @@ const syncSheet = async (realmId) => {
   await syncStudentData(realm.students, realm.name);
 }
 
+const isClanAddedToStudent = (students, rows) => {
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    const rowFound = rows.find(row => {
+      if (!row[SheetHeaders[CommonKeys.STUDENT_ID]]) {
+        return null;
+      }
+      const rowId = row[SheetHeaders[CommonKeys.STUDENT_ID]].toString();
+      const studentId = student[StudProp[CommonKeys.STUDENT_ID]].toString();
+      return studentId === rowId;
+    });
+    if (!rowFound || (!rowFound[SheetHeaders[CommonKeys.CLAN]] && student[StudProp[CommonKeys.CLAN]])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const getClansInUseCount = (students) => {
+  const clansInUse = new Set();
+  students.forEach(student => {
+    if (student.clan) {
+      clansInUse.add(student.clan);
+    }
+  });
+  return clansInUse.size;
+}
+
 const syncStudentData = async (students, realmName) => {
   const sheet = await SheetService.accessSpreadsheet(realmName);
   const rows = await sheet.getRows();
@@ -110,7 +144,6 @@ const syncStudentData = async (students, realmName) => {
     const student = students[j];
     const row = rows.find(row => {
       if (!row[SheetHeaders[CommonKeys.STUDENT_ID]]) {
-        row
         return null;
       }
       const rowId = row[SheetHeaders[CommonKeys.STUDENT_ID]].toString();
