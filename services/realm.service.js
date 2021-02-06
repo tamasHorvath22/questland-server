@@ -77,19 +77,37 @@ const addLessonXpToSumXp = async (realmId) => {
     student[StudProp.LESSON_XP] = 0;
   })
 
-  const result = await RealmTransaction.saveRealm(realm);
-  if (!result) {
-    return responseMessage.COMMON.ERROR;
+  const levelUpResult = await checkLevelUp(realm.students);
+  if (levelUpResult === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR
   }
-  await syncSheet(realmId);
-  return result;
-};
 
-const syncSheet = async (realmId) => {
-  const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  const modifiedRealm = await RealmTransaction.saveRealm(realm);
+  if (!modifiedRealm) {
     return responseMessage.DATABASE.ERROR;
   }
+  await syncSheet(modifiedRealm);
+  return modifiedRealm;
+};
+
+const checkLevelUp = async (students) => {
+  const classesObj = await ClassDoc.getClasses();
+  if (classesObj === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  students.forEach(student => {
+    if (student[StudProp[CommonKeys.LEVEL]] === 8) {
+      return;
+    }
+    const nextLevel = student[StudProp[CommonKeys.LEVEL]] + 1;
+    const treshold = classesObj.tresholds[nextLevel];
+    if (student[StudProp[CommonKeys.CUMULATIVE_XP]] >= treshold) {
+      student[StudProp[CommonKeys.LEVEL]]++;
+    }
+  });
+}
+
+const syncSheet = async (realm) => {
   const sheet = await SheetService.accessSpreadsheet(realm.name);
   const rows = await sheet.getRows();
   const clansInUse = getClansInUseCount(realm.students)

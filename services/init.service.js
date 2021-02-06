@@ -135,9 +135,20 @@ const createClasses = async () => {
       label: capitalize(className)
     }))
   })
+  const tresholds = {
+    1: 0,
+    2: 100,
+    3: 250,
+    4: 500,
+    5: 1000,
+    6: 1500,
+    7: 2500,
+    8: 4000
+  }
 
   const classessObj = Classes({
-    classes: classList
+    classes: classList,
+    tresholds: tresholds
   })
   await classessObj.save();
 }
