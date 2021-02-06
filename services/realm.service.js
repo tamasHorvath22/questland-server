@@ -1,40 +1,24 @@
 const responseMessage = require("../constants/api-response-messages");
 const RealmDoc = require('../persistence/realm.doc');
 const Realm = require('../models/realm.model');
+const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
 const ClassDoc = require('../persistence/classes.doc');
 const StudProp = require('../constants/student.properties');
+const CommonKeys = require('../constants/sheet.student.keys');
 const SheetHeaders = require('../constants/sheet.headers');
 const RealmTransaction = require('../persistence/realms.transactions');
-const { GoogleSpreadsheet } = require("google-spreadsheet");
-const googleDoc = new GoogleSpreadsheet("149rWP-JRudGvfVKppuMlOmUxv0fWzqiRGeCZTBJfb-g");
+const _ = require('underscore');
+const SheetService = require('./sheet.service')
+const sleep = require('util').promisify(setTimeout);
 
-const loadSpreadsheet = async () => {
-  try {
-    await googleDoc.useServiceAccountAuth({
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n")
-    });
-    await googleDoc.loadInfo();
-    return true;
-  } catch (err) {
-    console.log(err);
-    return false;
-  }
-}
-
-const accessSpreadsheet = async (realmName) => {
-  await loadSpreadsheet();
-  // TODO add sheet name to realm object to DB
-  return googleDoc.sheetsByTitle[realmName];
-};
 
 const addValue = async (data) => {
   const realm = await RealmDoc.getById(data.realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const student = realm.students.find(s => s._id.equals(data.studentId));
+  const student = realm.students.find(s => s._id.toString() === data.studentId.toString());
   let modifier;
   if (data.pointType === StudProp.LESSON_XP) {
     modifier = student[StudProp.XP_MODIFIER];
@@ -53,8 +37,8 @@ const addValue = async (data) => {
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
   }
-  const isSuccess = await RealmTransaction.saveRealm(realm);
-  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.COMMON.ERROR;
 };
 
 const countNewValue = (oldValue, incomingValue, modifier, isMana) => {
@@ -78,8 +62,8 @@ const addValueToAll = async (data) => {
     student[data.pointType] += data.value
   })
 
-  const isSuccess = await RealmTransaction.saveRealm(realm);
-  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.COMMON.ERROR;
 }
 
 const addLessonXpToSumXp = async (realmId) => {
@@ -89,38 +73,94 @@ const addLessonXpToSumXp = async (realmId) => {
   }
 
   realm.students.forEach(student => {
-    student[StudProp.CUMULATIVE_XP] += student[StudProp.LESSON_XP] * student[StudProp.XP_MODIFIER];
+    student[StudProp.CUMULATIVE_XP] += student[StudProp.LESSON_XP];
     student[StudProp.LESSON_XP] = 0;
   })
 
-  const isSuccess = await RealmTransaction.saveRealm(realm);
-  await syncGoogleSheet(realm.students, realm.name);
-  return isSuccess ? realm : responseMessage.COMMON.ERROR;
+  const result = await RealmTransaction.saveRealm(realm);
+  if (!result) {
+    return responseMessage.COMMON.ERROR;
+  }
+  await syncSheet(realmId);
+  return result;
 };
 
-const syncGoogleSheet = async (students, realmName) => {
-  const sheet = await accessSpreadsheet(realmName);
+const syncSheet = async (realmId) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const sheet = await SheetService.accessSpreadsheet(realm.name);
   const rows = await sheet.getRows();
-  const props = [
-    'CUMULATIVE_XP',
-    'MANA_POINTS',
-    'PET_FOOD',
-    'CURSE_POINTS',
-    'MANA_MODIFIER',
-    'XP_MODIFIER',
-    'SKILL_COUNTER',
-    'DUEL_COUNT'
-  ];
+  const clansInUse = getClansInUseCount(realm.students)
+  const numOfRows = realm.students.length + clansInUse;
+  const clanAddedToStudent = isClanAddedToStudent(realm.students, rows);
+  
+  if (rows.length !== numOfRows || clanAddedToStudent) {
+    await sheet.delete();
+    const isSheetCreated = await createSheetForNewRealm(realm.name);
+    if (!isSheetCreated) {
+      return responseMessage.SHEET.SYNC_FAIL;
+    }
+    sortStudents(realm);
+    await addStudentsToSheet(realm.name, realm.students);
+  }
+  await syncStudentData(realm.students, realm.name);
+}
+
+const isClanAddedToStudent = (students, rows) => {
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    const rowFound = rows.find(row => {
+      if (!row[SheetHeaders[CommonKeys.STUDENT_ID]]) {
+        return null;
+      }
+      const rowId = row[SheetHeaders[CommonKeys.STUDENT_ID]].toString();
+      const studentId = student[StudProp[CommonKeys.STUDENT_ID]].toString();
+      return studentId === rowId;
+    });
+    if (!rowFound || (!rowFound[SheetHeaders[CommonKeys.CLAN]] && student[StudProp[CommonKeys.CLAN]])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const getClansInUseCount = (students) => {
+  const clansInUse = new Set();
   students.forEach(student => {
-    const row = rows.find(row => row[SheetHeaders.NAME] === student.name);
+    if (student.clan) {
+      clansInUse.add(student.clan);
+    }
+  });
+  return clansInUse.size;
+}
+
+const syncStudentData = async (students, realmName) => {
+  const sheet = await SheetService.accessSpreadsheet(realmName);
+  const rows = await sheet.getRows();
+
+  for (let j = 0; j < students.length; j++) {
+    const student = students[j];
+    const row = rows.find(row => {
+      if (!row[SheetHeaders[CommonKeys.STUDENT_ID]]) {
+        return null;
+      }
+      const rowId = row[SheetHeaders[CommonKeys.STUDENT_ID]].toString();
+      const studentId = student[StudProp[CommonKeys.STUDENT_ID]].toString();
+      return studentId === rowId;
+    });
     if (!row) {
       return;
     }
-    props.forEach(async (prop) => {
-      row[SheetHeaders[prop]] = student[StudProp[prop]];
-      await row.save();
-    })
-  })
+    const keys = Object.values(CommonKeys);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      row[SheetHeaders[key]] = student[StudProp[key]];
+    }
+    await row.save();
+    await sleep(1100);
+  }
 }
 
 const getRealm = async (realmId) => {
@@ -129,7 +169,21 @@ const getRealm = async (realmId) => {
     return responseMessage.DATABASE.ERROR;
   }
   return realm;
-};
+}
+
+const sortStudents = (realm) => {
+  var grouped = _.groupBy(realm.students, 'clan');
+  for (let group in grouped) {
+    _.sortBy(grouped[group], 'name');
+  }
+  const result = [];
+  Object.keys(grouped).forEach(clan => {
+    grouped[clan].forEach(student => {
+      result.push(student);
+    })
+  })
+  realm.students = result;
+}
 
 const getRealms = async () => {
   // TODO refactor the properties
@@ -155,7 +209,7 @@ const getClasses = async () => {
 };
 
 const createRealm = async (realmName) => {
-  if (await checkSheetName(realmName)) {
+  if (await SheetService.accessSpreadsheet(realmName)) {
     return responseMessage.REALM.NAME_TAKEN;
   }
   const isSaveToDbSuccess = await createRealmToDb(realmName);
@@ -170,14 +224,13 @@ const createRealm = async (realmName) => {
   return responseMessage.REALM.CREATE_FAIL;
 }
 
-const checkSheetName = async (realmName) => {
-  await loadSpreadsheet();
-  return googleDoc.sheetsByTitle[realmName];
-}
-
 const createSheetForNewRealm = async (realmName) => {
   try {
-    await loadSpreadsheet();
+    const googleDoc = await SheetService.loadSpreadsheet();
+    if (!googleDoc) {
+      // TODO error handling
+      return;
+    }
     await googleDoc.addSheet({
       headerValues: Object.values(SheetHeaders),
       title: realmName
@@ -189,13 +242,29 @@ const createSheetForNewRealm = async (realmName) => {
   }
 }
 
+const modifyRealm = async (realm) => {
+  const realmDb = await RealmDoc.getById(realm._id);
+  if (realmDb === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  realmDb.students = realm.students
+  realmDb.clans = realm.clans
+  const savedRealm = await RealmTransaction.saveRealm(realmDb);
+  return savedRealm ? savedRealm : responseMessage.REALM.MODIFICATION_FAIL;
+}
+
 const addStudents = async (realmId, students) => {
   const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+
   const studentList = [];
   students.forEach(student => {
     studentList.push(Student({
       [StudProp.NAME]: student.name,
       [StudProp.CLASS]: student.class,
+      [StudProp.CLAN]: student.clan,
       [StudProp.LEVEL]: 1,
       [StudProp.CUMULATIVE_XP]: 0,
       [StudProp.XP_MODIFIER]: 0,
@@ -209,36 +278,43 @@ const addStudents = async (realmId, students) => {
     }))
   })
   realm.students.push(...studentList);
-  const isSaveSuccess = await RealmTransaction.saveRealm(realm);
-  if (isSaveSuccess) {
-    const areStudentsAddedToSheet = await addStudentsToSheet(realm.name, students);
-    if (!areStudentsAddedToSheet) {
-      for (let i = 0; i < realm.students.length; i++) {
-        const dbStudent = realm.students[i];
-        if (students.find(student => student.name === dbStudent.name)) {
-          realm.students.splice(i, 1);
-        }
-      }
-      await RealmTransaction.saveRealm(realm);
-      return responseMessage.REALM.ADD_STUDENT_FAIL;
-    }
-    return await getRealm(realmId);
+  const savedRealm = await RealmTransaction.saveRealm(realm);
+  if (savedRealm) {
+    // const areStudentsAddedToSheet = await addStudentsToSheet(realm.name, students);
+    // if (!areStudentsAddedToSheet) {
+    //   for (let i = 0; i < realm.students.length; i++) {
+    //     const dbStudent = realm.students[i];
+    //     if (students.find(student => student.name === dbStudent.name)) {
+    //       realm.students.splice(i, 1);
+    //     }
+    //   }
+    //   await RealmTransaction.saveRealm(realm);
+    //   return responseMessage.REALM.ADD_STUDENT_FAIL;
+    // }
+    return savedRealm;
   }
   return responseMessage.REALM.ADD_STUDENT_FAIL;
 }
 
 const addStudentsToSheet = async (realmName, students) => {
-  const isSheetLoaded = await loadSpreadsheet();
+  const isSheetLoaded = await SheetService.loadSpreadsheet();
   if (!isSheetLoaded) {
     return false;
   }
-  const sheet = googleDoc.sheetsByTitle[realmName];
+  const sheet = await SheetService.accessSpreadsheet(realmName);
+  let currentClan = null;
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
+    if (currentClan !== student[StudProp[CommonKeys.CLAN]]) {
+      await sheet.addRow({
+        [SheetHeaders[CommonKeys.CLAN]]: student[StudProp[CommonKeys.CLAN]]
+      });
+      currentClan = student[StudProp[CommonKeys.CLAN]];
+      await sleep(1100);
+    }
     await sheet.addRow({
-      [SheetHeaders.NAME]: student.name,
-      [SheetHeaders.CLASS]: student.class,
-      [SheetHeaders.LEVEL]: 1
+      [SheetHeaders[CommonKeys.NAME]]: student[StudProp[CommonKeys.NAME]],
+      [SheetHeaders[CommonKeys.STUDENT_ID]]: student[StudProp[CommonKeys.STUDENT_ID]]
     });
   }
   return true;
@@ -258,6 +334,28 @@ const createRealmToDb = async (realmName) => {
   }
 }
 
+const createClans = async (realmId, clans) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const clanList = [];
+  clans.forEach(clan => {
+    clanList.push(Clan({
+      name: clan.name,
+      gloryPoints: 0,
+      level: 1,
+      students: []
+    }))
+  });
+  realm.clans.push(...clanList);
+  const result = await RealmTransaction.saveRealm(realm);
+  if (result) {
+    return result;
+  }
+  return responseMessage.REALM.CLAN_ADD_FAIL;
+}
+
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
@@ -266,5 +364,8 @@ module.exports = {
   addValueToAll: addValueToAll,
   getClasses: getClasses,
   createRealm: createRealm,
-  addStudents: addStudents
+  addStudents: addStudents,
+  createClans: createClans,
+  modifyRealm: modifyRealm,
+  syncSheet: syncSheet
 };

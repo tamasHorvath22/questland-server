@@ -54,6 +54,27 @@ module.exports = function (app) {
 
   /* 
     request: 
+    {
+      realm: the modified realm
+    }
+  */
+  app.post("/modify-realm", jsonParser, async (req, res) => {
+    res.send(await RealmService.modifyRealm(req.body.realm));
+  });
+
+  /* 
+    request: 
+    {
+      realmId: the ID of realm
+      clans: the list of clan names
+    }
+  */
+  app.post("/add-clans", jsonParser, async (req, res) => {
+    res.send(await RealmService.createClans(req.body.realmId, req.body.clans));
+  });
+
+  /* 
+    request: 
     { 
       realmId: the id of the realm
     }

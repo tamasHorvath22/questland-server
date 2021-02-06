@@ -1,15 +1,20 @@
+
+const keys = require('./sheet.student.keys');
+
 module.exports = Object.freeze({
-  NAME: "Name",
-  CLASS: 'Class',
-  LEVEL: 'Level',
-  CUMULATIVE_XP: "CUMULATIVE XP",
-  LESSON_XP: "LESSON XP",
-  XP_MODIFIER: "XP\nmodifiers",
-  MANA_POINTS: "MANA POINTS",
-  MANA_MODIFIER: 'MANA\nmodifiers',
-  PET_FOOD: "Pet Food",
-  CURSE_POINTS: "CURSE POINTS",
-  NOT_PRESENT: "Not\npresent",
-  SKILL_COUNTER: 'Skill uses',
-  DUEL_COUNT: 'Duels'
+  [keys.NAME]: 'Name',
+  [keys.CLAN]: 'Clan',
+  [keys.CLASS]: 'Class',
+  [keys.LEVEL]: 'Level',
+  [keys.CUMULATIVE_XP]: 'CUMULATIVE XP',
+  [keys.XP_MODIFIER]: 'XP\nmodifiers',
+  [keys.LESSON_XP]: 'LESSON XP',
+  [keys.MANA_POINTS]: 'MANA POINTS',
+  [keys.MANA_MODIFIER]: 'MANA\nmodifiers',
+  [keys.SKILL_COUNTER]: 'Skill uses',
+  [keys.PET_FOOD]: 'Pet Food',
+  [keys.CURSE_POINTS]: 'CURSE POINTS',
+  // NOT_PRESENT: 'Not\npresent',
+  [keys.DUEL_COUNT]: 'Duels',
+  [keys.STUDENT_ID]: 'studentId'
 });
