@@ -4,5 +4,6 @@ module.exports = Object.freeze({
   STUDENT: 'Student',
   CLASSES: 'CLASSES',
   CLASS: 'CLASS',
-  CLAN: 'CLAN'
+  CLAN: 'CLAN',
+  CLAN_TRESHOLDS: 'CLAN_TRESHOLDS'
 })

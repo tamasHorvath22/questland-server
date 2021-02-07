@@ -4,6 +4,7 @@ const schemas = require('../constants/schemas');
 const saveRealm = async (realm) => {
   const transaction = new Transaction(true);
   realm.markModified('students');
+  realm.markModified('clans');
   transaction.insert(schemas.REALM, realm);
   try {
     const result = await transaction.run();

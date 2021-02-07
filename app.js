@@ -15,4 +15,13 @@ app.listen(port);
 console.log(`server started on port: ${port}`);
 
 // InitService.createRealm();
-// InitService.createClasses();
+
+
+(async () => {
+  try {
+    await InitService.createClasses();
+    await InitService.createClanTresholds();
+  } catch (e) {
+    console.log(e)
+}
+})();

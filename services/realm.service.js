@@ -4,6 +4,7 @@ const Realm = require('../models/realm.model');
 const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
 const ClassDoc = require('../persistence/classes.doc');
+const ClanTresholdsDoc = require('../persistence/clan.tresholds.doc');
 const StudProp = require('../constants/student.properties');
 const CommonKeys = require('../constants/sheet.student.keys');
 const SheetHeaders = require('../constants/sheet.headers');
@@ -36,10 +37,42 @@ const addValue = async (data) => {
   }
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
+    if (data.isWinner) {
+      await manageGloryPointsAfterDuel(realm, student);
+    }
   }
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.COMMON.ERROR;
 };
+
+const manageGloryPointsAfterDuel = async (realm, student) => {
+  const studentClan = realm.clans.find(clan => clan._id.toString() === student.clan.toString());
+  studentClan.gloryPoints += 5;
+  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
+  if (studentClan.level === 5) {
+    return;
+  }
+  if (clanTresholds === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const nextClanLevel = studentClan.level + 1;
+  if (studentClan.gloryPoints >= clanTresholds[nextClanLevel].treshold) {
+    studentClan.level++;
+    increaseXpModifiersAfterClanLevelUp(
+      realm.students,
+      studentClan.students,
+      clanTresholds[nextClanLevel].xpmodifierIncrease
+    );
+  }
+}
+
+const increaseXpModifiersAfterClanLevelUp = async (students, studentIdList, value) => {
+  studentIdList.forEach(studentId => {
+    const student = students.find(s => s._id.toString() === studentId.toString());
+    student[StudProp[CommonKeys.XP_MODIFIER]] += value;
+  });
+
+}
 
 const countNewValue = (oldValue, incomingValue, modifier, isMana) => {
   if (modifier) {
@@ -103,7 +136,7 @@ const syncSheet = async (realmId) => {
       return responseMessage.SHEET.SYNC_FAIL;
     }
     sortStudents(realm);
-    await addStudentsToSheet(realm.name, realm.students);
+    await addStudentsToSheet(realm._id, realm.name, realm.students);
   }
   await syncStudentData(realm.students, realm.name);
 }
@@ -156,6 +189,9 @@ const syncStudentData = async (students, realmName) => {
     const keys = Object.values(CommonKeys);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
+      if (key === 'CLAN') {
+        continue;
+      }
       row[SheetHeaders[key]] = student[StudProp[key]];
     }
     await row.save();
@@ -280,41 +316,37 @@ const addStudents = async (realmId, students) => {
   realm.students.push(...studentList);
   const savedRealm = await RealmTransaction.saveRealm(realm);
   if (savedRealm) {
-    // const areStudentsAddedToSheet = await addStudentsToSheet(realm.name, students);
-    // if (!areStudentsAddedToSheet) {
-    //   for (let i = 0; i < realm.students.length; i++) {
-    //     const dbStudent = realm.students[i];
-    //     if (students.find(student => student.name === dbStudent.name)) {
-    //       realm.students.splice(i, 1);
-    //     }
-    //   }
-    //   await RealmTransaction.saveRealm(realm);
-    //   return responseMessage.REALM.ADD_STUDENT_FAIL;
-    // }
     return savedRealm;
   }
   return responseMessage.REALM.ADD_STUDENT_FAIL;
 }
 
-const addStudentsToSheet = async (realmName, students) => {
+const addStudentsToSheet = async (realmId, realmName, students) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
   const isSheetLoaded = await SheetService.loadSpreadsheet();
   if (!isSheetLoaded) {
     return false;
   }
   const sheet = await SheetService.accessSpreadsheet(realmName);
-  let currentClan = null;
+  let currentClanId = null;
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
-    if (currentClan !== student[StudProp[CommonKeys.CLAN]]) {
+    const currentClan = realm.clans.find(c => c._id.toString() === student[StudProp[CommonKeys.CLAN]].toString());
+    const currentClanName = currentClan.name;
+    if (currentClanId !== student[StudProp[CommonKeys.CLAN]]) {
       await sheet.addRow({
-        [SheetHeaders[CommonKeys.CLAN]]: student[StudProp[CommonKeys.CLAN]]
+        [SheetHeaders[CommonKeys.CLAN]]: currentClanName
       });
-      currentClan = student[StudProp[CommonKeys.CLAN]];
+      currentClanId = student[StudProp[CommonKeys.CLAN]];
       await sleep(1100);
     }
     await sheet.addRow({
       [SheetHeaders[CommonKeys.NAME]]: student[StudProp[CommonKeys.NAME]],
-      [SheetHeaders[CommonKeys.STUDENT_ID]]: student[StudProp[CommonKeys.STUDENT_ID]]
+      [SheetHeaders[CommonKeys.STUDENT_ID]]: student[StudProp[CommonKeys.STUDENT_ID]],
+      [SheetHeaders[CommonKeys.CLAN]]: currentClanName
     });
   }
   return true;

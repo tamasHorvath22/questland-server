@@ -2,7 +2,11 @@ const Student = require('../models/student.model');
 const Realm = require('../models/realm.model');
 const Classes = require('../models/classes.model');
 const Class = require('../models/class.model');
+const ClanTresholds = require('../models/clan.tresholds.model');
 const ClassEnum = require('../constants/classes');
+const ClanTresholdDoc = require('../persistence/clan.tresholds.doc')
+const ClassesDoc = require('../persistence/classes.doc');
+const responseMessage = require('../constants/api-response-messages');
 
 const createRealm = async () => {
   const studentList = [];
@@ -127,19 +131,23 @@ const createRealm = async () => {
 }
 
 const createClasses = async () => {
-  const classList = []
-  const classes = Object.values(ClassEnum);
-  classes.forEach(className => {
-    classList.push(Class({
-      name: className,
-      label: capitalize(className)
-    }))
-  })
-
-  const classessObj = Classes({
-    classes: classList
-  })
-  await classessObj.save();
+  const classes = await ClassesDoc.getClasses();
+  if (classes === responseMessage.CLASSES.NO_ELEMENT) {
+    const classList = []
+    const classes = Object.values(ClassEnum);
+    classes.forEach(className => {
+      classList.push(Class({
+        name: className,
+        label: capitalize(className)
+      }))
+    })
+  
+    const classessObj = Classes({
+      classes: classList
+    })
+    await classessObj.save();
+    console.log('classes created');
+  }
 }
 
 const capitalize = (word) => {
@@ -148,7 +156,38 @@ const capitalize = (word) => {
   return `${first}${end}`;
 }
 
+const createClanTresholds = async () => {
+  const clanTreshold = await ClanTresholdDoc.getClanTresholds();
+  if (clanTreshold === responseMessage.CLAN_TRESHOLDS.NO_ELEMENT) {
+    const clanTresholds = ClanTresholds({
+      1: {
+        treshold: 0,
+        xpmodifierIncrease: 0
+      },
+      2: {
+        treshold: 50,
+        xpmodifierIncrease: 5
+      },
+      3: {
+        treshold: 150,
+        xpmodifierIncrease: 10
+      },
+      4: {
+        treshold: 300,
+        xpmodifierIncrease: 20
+      },
+      5: {
+        treshold: 500,
+        xpmodifierIncrease: 50
+      }
+    })
+    await clanTresholds.save();
+    console.log('clan tresholds created');
+  }
+}
+
 module.exports = {
   createRealm: createRealm,
-  createClasses: createClasses
+  createClasses: createClasses,
+  createClanTresholds: createClanTresholds
 };
