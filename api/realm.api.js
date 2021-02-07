@@ -12,6 +12,7 @@ module.exports = function (app) {
       pointType: the type of the value,
       value: data to add the current data,
       isDuel: true if value modification comes from a duel
+      isWinner: if that was a duel, defines who the winner was
     }
   */
   app.post("/add-value", jsonParser, async (req, res) => {

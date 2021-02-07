@@ -39,5 +39,11 @@ module.exports = Object.freeze({
     CLAN_ADD_SUCCESS: 'CLAN_ADD_SUCCESS',
     CLAN_ADD_FAIL: 'CLAN_ADD_FAIL',
     MODIFICATION_FAIL: 'MODIFICATION_FAIL'
+  },
+  CLAN_TRESHOLDS: {
+    NO_ELEMENT: 'NO_ELEMENT'
+  },
+  CLASSES: {
+    NO_ELEMENT: 'NO_ELEMENT'
   }
 });
