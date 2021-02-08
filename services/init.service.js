@@ -1,6 +1,8 @@
 const Student = require('../models/student.model');
 const Realm = require('../models/realm.model');
 const Classes = require('../models/classes.model');
+const Backup = require('../models/backup.list.model');
+const BackupDoc = require('../persistence/backup.doc')
 const Class = require('../models/class.model');
 const ClanTresholds = require('../models/clan.tresholds.model');
 const ClassEnum = require('../constants/classes');
@@ -196,8 +198,22 @@ const createClanTresholds = async () => {
   }
 }
 
+const createBackup = async () => {
+  const backupDb = await BackupDoc.getBackup();
+  if (backupDb === responseMessage.BACKUP.NO_ELEMENT) {
+    const backup = Backup({
+      realms: {
+        init: 'init value'
+      }
+    })
+    await backup.save();
+    console.log('backup list created');
+  }
+}
+
 module.exports = {
   createRealm: createRealm,
   createClasses: createClasses,
-  createClanTresholds: createClanTresholds
+  createClanTresholds: createClanTresholds,
+  createBackup: createBackup
 };
