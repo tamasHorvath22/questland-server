@@ -21,6 +21,7 @@ console.log(`server started on port: ${port}`);
   try {
     await InitService.createClasses();
     await InitService.createClanTresholds();
+    await InitService.createBackup();
   } catch (e) {
     console.log(e)
 }

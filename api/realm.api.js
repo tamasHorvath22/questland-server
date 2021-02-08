@@ -1,6 +1,7 @@
 const bodyParser = require("body-parser");
 const jsonParser = bodyParser.json();
 const RealmService = require("../services/realm.service");
+const SheetService = require("../services/sheet.service");
 
 module.exports = function (app) {
 
@@ -76,6 +77,17 @@ module.exports = function (app) {
 
   /* 
     request: 
+    {
+      realmId: the ID of realm
+      time: the timestamp of backup
+    }
+  */
+  app.post("/sync-backup", jsonParser, async (req, res) => {
+    res.send(await SheetService.syncBackup(req.body.realmId, req.body.time));
+  });
+
+  /* 
+    request: 
     { 
       realmId: the id of the realm
     }
@@ -86,6 +98,10 @@ module.exports = function (app) {
 
   app.get("/realms/:realmId", jsonParser, async (req, res) => {
     res.send(await RealmService.getRealm(req.params.realmId));
+  });
+
+  app.get("/backup/:realmId", jsonParser, async (req, res) => {
+    res.send(await RealmService.getBackupData(req.params.realmId));
   });
 
   app.get("/realms", jsonParser, async (req, res) => {

@@ -45,5 +45,8 @@ module.exports = Object.freeze({
   },
   CLASSES: {
     NO_ELEMENT: 'NO_ELEMENT'
+  },
+  BACKUP: {
+    NO_ELEMENT: 'NO_ELEMENT'
   }
 });

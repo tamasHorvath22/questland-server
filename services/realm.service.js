@@ -4,15 +4,13 @@ const Realm = require('../models/realm.model');
 const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
 const ClassDoc = require('../persistence/classes.doc');
+const BackupDoc = require('../persistence/backup.doc');
 const ClanTresholdsDoc = require('../persistence/clan.tresholds.doc');
 const StudProp = require('../constants/student.properties');
 const CommonKeys = require('../constants/sheet.student.keys');
-const SheetHeaders = require('../constants/sheet.headers');
 const RealmTransaction = require('../persistence/realms.transactions');
-const _ = require('underscore');
 const SheetService = require('./sheet.service')
-const sleep = require('util').promisify(setTimeout);
-
+const BackupService = require('./backup.service')
 
 const addValue = async (data) => {
   const realm = await RealmDoc.getById(data.realmId);
@@ -119,7 +117,8 @@ const addLessonXpToSumXp = async (realmId) => {
   if (!modifiedRealm) {
     return responseMessage.DATABASE.ERROR;
   }
-  await syncSheet(modifiedRealm);
+  await BackupService.saveBackup(modifiedRealm);
+  await SheetService.syncSheet(modifiedRealm, modifiedRealm.name);
   return modifiedRealm;
 };
 
@@ -171,83 +170,6 @@ const checkAllStudentInClanLevelUp = (realm, studentId) => {
   }
 }
 
-const syncSheet = async (realm) => {
-  const sheet = await SheetService.accessSpreadsheet(realm.name);
-  const rows = await sheet.getRows();
-  const clansInUse = getClansInUseCount(realm.students)
-  const numOfRows = realm.students.length + clansInUse;
-  const clanAddedToStudent = isClanAddedToStudent(realm.students, rows);
-  
-  if (rows.length !== numOfRows || clanAddedToStudent) {
-    await sheet.delete();
-    const isSheetCreated = await createSheetForNewRealm(realm.name);
-    if (!isSheetCreated) {
-      return responseMessage.SHEET.SYNC_FAIL;
-    }
-    sortStudents(realm);
-    await addStudentsToSheet(realm._id, realm.name, realm.students);
-  }
-  await syncStudentData(realm.students, realm.name);
-}
-
-const isClanAddedToStudent = (students, rows) => {
-  for (let i = 0; i < students.length; i++) {
-    const student = students[i];
-    const rowFound = rows.find(row => {
-      if (!row[SheetHeaders[CommonKeys.STUDENT_ID]]) {
-        return null;
-      }
-      const rowId = row[SheetHeaders[CommonKeys.STUDENT_ID]].toString();
-      const studentId = student[StudProp[CommonKeys.STUDENT_ID]].toString();
-      return studentId === rowId;
-    });
-    if (!rowFound || (!rowFound[SheetHeaders[CommonKeys.CLAN]] && student[StudProp[CommonKeys.CLAN]])) {
-      return true;
-    }
-  }
-  return false;
-}
-
-const getClansInUseCount = (students) => {
-  const clansInUse = new Set();
-  students.forEach(student => {
-    if (student.clan) {
-      clansInUse.add(student.clan);
-    }
-  });
-  return clansInUse.size;
-}
-
-const syncStudentData = async (students, realmName) => {
-  const sheet = await SheetService.accessSpreadsheet(realmName);
-  const rows = await sheet.getRows();
-
-  for (let j = 0; j < students.length; j++) {
-    const student = students[j];
-    const row = rows.find(row => {
-      if (!row[SheetHeaders[CommonKeys.STUDENT_ID]]) {
-        return null;
-      }
-      const rowId = row[SheetHeaders[CommonKeys.STUDENT_ID]].toString();
-      const studentId = student[StudProp[CommonKeys.STUDENT_ID]].toString();
-      return studentId === rowId;
-    });
-    if (!row) {
-      return;
-    }
-    const keys = Object.values(CommonKeys);
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      if (key === 'CLAN') {
-        continue;
-      }
-      row[SheetHeaders[key]] = student[StudProp[key]];
-    }
-    await row.save();
-    await sleep(1100);
-  }
-}
-
 const getRealm = async (realmId) => {
   const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
@@ -256,18 +178,14 @@ const getRealm = async (realmId) => {
   return realm;
 }
 
-const sortStudents = (realm) => {
-  var grouped = _.groupBy(realm.students, 'clan');
-  for (let group in grouped) {
-    _.sortBy(grouped[group], 'name');
-  }
-  const result = [];
-  Object.keys(grouped).forEach(clan => {
-    grouped[clan].forEach(student => {
-      result.push(student);
-    })
-  })
-  realm.students = result;
+const getBackupData = async (realmId) => {
+  const backup = await BackupDoc.getBackup();
+  const realmBackup = backup.realms[realmId.toString()];
+  const saveTimeList = [];
+  realmBackup.list.forEach(elem => {
+    saveTimeList.push(elem.time);
+  });
+  return saveTimeList;
 }
 
 const getRealms = async () => {
@@ -307,24 +225,6 @@ const createRealm = async (realmName) => {
     return await getRealms();
   }
   return responseMessage.REALM.CREATE_FAIL;
-}
-
-const createSheetForNewRealm = async (realmName) => {
-  try {
-    const googleDoc = await SheetService.loadSpreadsheet();
-    if (!googleDoc) {
-      // TODO error handling
-      return;
-    }
-    await googleDoc.addSheet({
-      headerValues: Object.values(SheetHeaders),
-      title: realmName
-    });
-    return true;
-  } catch (err) {
-    console.log(err);
-    return false;
-  }
 }
 
 const modifyRealm = async (realm) => {
@@ -368,37 +268,6 @@ const addStudents = async (realmId, students) => {
     return savedRealm;
   }
   return responseMessage.REALM.ADD_STUDENT_FAIL;
-}
-
-const addStudentsToSheet = async (realmId, realmName, students) => {
-  const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
-    return responseMessage.DATABASE.ERROR;
-  }
-  const isSheetLoaded = await SheetService.loadSpreadsheet();
-  if (!isSheetLoaded) {
-    return false;
-  }
-  const sheet = await SheetService.accessSpreadsheet(realmName);
-  let currentClanId = null;
-  for (let i = 0; i < students.length; i++) {
-    const student = students[i];
-    const currentClan = findElemById(realm.clans, student[StudProp[CommonKeys.CLAN]]);
-    const currentClanName = currentClan.name;
-    if (currentClanId !== student[StudProp[CommonKeys.CLAN]]) {
-      await sheet.addRow({
-        [SheetHeaders[CommonKeys.CLAN]]: currentClanName
-      });
-      currentClanId = student[StudProp[CommonKeys.CLAN]];
-      await sleep(1100);
-    }
-    await sheet.addRow({
-      [SheetHeaders[CommonKeys.NAME]]: student[StudProp[CommonKeys.NAME]],
-      [SheetHeaders[CommonKeys.STUDENT_ID]]: student[StudProp[CommonKeys.STUDENT_ID]],
-      [SheetHeaders[CommonKeys.CLAN]]: currentClanName
-    });
-  }
-  return true;
 }
 
 const createRealmToDb = async (realmName) => {
@@ -448,5 +317,5 @@ module.exports = {
   addStudents: addStudents,
   createClans: createClans,
   modifyRealm: modifyRealm,
-  syncSheet: syncSheet
+  getBackupData: getBackupData
 };
