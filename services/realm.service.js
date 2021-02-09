@@ -90,6 +90,9 @@ const addValueToAll = async (data) => {
     return responseMessage.DATABASE.ERROR;
   }
   realm.students.forEach(student => {
+    if (data.exclude.includes(student._id.toString())) {
+      return;
+    }
     student[data.pointType] += data.value
   })
 

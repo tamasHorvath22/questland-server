@@ -27,6 +27,7 @@ module.exports = function (app) {
       realmId: the id of the realm,
       pointType: the type of the value,
       value: data to add the current data
+      exclude: array of student Id strings, these students don't get points
     }
   */
   app.post("/add-value-to-all", jsonParser, async (req, res) => {
