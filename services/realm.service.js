@@ -13,6 +13,7 @@ const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
 const BackupService = require('./backup.service');
 
+
 const addValue = async (data) => {
   const realm = await RealmDoc.getById(data.realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
