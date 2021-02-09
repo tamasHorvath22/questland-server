@@ -133,10 +133,12 @@ const addStudentsToSheet = async (realmId, realmName, students) => {
   let currentClanId = null;
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
-    const currentClan = findElemById(realm.clans, student[StudProp[CommonKeys.CLAN]]);
     let currentClanName;
-    if (currentClan) {
-      currentClanName = currentClan.name;
+    if (student[StudProp[CommonKeys.CLAN]]) {
+      const currentClan = findElemById(realm.clans, student[StudProp[CommonKeys.CLAN]]);
+      if (currentClan) {
+        currentClanName = currentClan.name;
+      }
     }
     if (currentClanName && currentClanId !== student[StudProp[CommonKeys.CLAN]]) {
       await sheet.addRow({
@@ -192,5 +194,6 @@ module.exports = {
   loadSpreadsheet: loadSpreadsheet,
   accessSpreadsheet: accessSpreadsheet,
   syncBackup: syncBackup,
-  syncSheet: syncSheet
+  syncSheet: syncSheet,
+  createSheetForNewRealm: createSheetForNewRealm
 };
