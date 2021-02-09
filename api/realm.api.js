@@ -67,6 +67,17 @@ module.exports = function (app) {
   /* 
     request: 
     {
+      realmId: the ID of realm
+      points: list of points objects { name, id, xp, grade }
+    }
+  */
+  app.post("/add-test", jsonParser, async (req, res) => {
+    res.send(await RealmService.addTest(req.body.realmId, req.body.points));
+  });
+
+  /* 
+    request: 
+    {
       realm: the modified realm
     }
   */

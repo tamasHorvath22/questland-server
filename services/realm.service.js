@@ -11,7 +11,7 @@ const Classes = require('../constants/classes');
 const CommonKeys = require('../constants/sheet.student.keys');
 const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
-const BackupService = require('./backup.service')
+const BackupService = require('./backup.service');
 
 const addValue = async (data) => {
   const realm = await RealmDoc.getById(data.realmId);
@@ -47,6 +47,9 @@ const addValue = async (data) => {
 };
 
 const manageGloryPointsAfterDuel = async (realm, student) => {
+  if (!student.clan) {
+    return;
+  }
   const studentClan = findElemById(realm.clans, student.clan);
   studentClan.gloryPoints += 5;
   const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
@@ -240,7 +243,7 @@ const createRealm = async (realmName) => {
   }
   const isSaveToDbSuccess = await createRealmToDb(realmName);
   if (isSaveToDbSuccess) {
-    const isSheetCreated = await createSheetForNewRealm(realmName);
+    const isSheetCreated = await SheetService.createSheetForNewRealm(realmName);
     if (!isSheetCreated) {
       RealmDoc.remove(realmName);
       return responseMessage.REALM.CREATE_FAIL;
@@ -362,6 +365,25 @@ const resetRealm = async (realmId) => {
   // return responseMessage.REALM.CLAN_ADD_FAIL;
 }
 
+const addTest = async (realmId, points) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  points.forEach(test => {
+    const student = findElemById(realm.students, test.id);
+    let xp = test.xp;
+    if (student.class === Classes.WIZARD) {
+      xp *= 2;
+    }
+    xp *= (100 + student.xpModifier) / 100;
+    const floatValue = parseFloat(xp.toFixed(2));
+    student.lessonXp += floatValue;
+  });
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.COMMON.ERROR;
+}
+
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
@@ -374,5 +396,6 @@ module.exports = {
   createClans: createClans,
   modifyRealm: modifyRealm,
   getBackupData: getBackupData,
-  resetRealm: resetRealm
+  resetRealm: resetRealm,
+  addTest: addTest
 };
