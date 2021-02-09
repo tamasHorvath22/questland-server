@@ -7,6 +7,7 @@ const ClassDoc = require('../persistence/classes.doc');
 const BackupDoc = require('../persistence/backup.doc');
 const ClanTresholdsDoc = require('../persistence/clan.tresholds.doc');
 const StudProp = require('../constants/student.properties');
+const Classes = require('../constants/classes');
 const CommonKeys = require('../constants/sheet.student.keys');
 const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
@@ -18,7 +19,7 @@ const addValue = async (data) => {
     return responseMessage.DATABASE.ERROR;
   }
   const student = findElemById(realm.students, data.studentId);
-  let modifier;
+  let modifier = 0;
   if (data.pointType === StudProp.LESSON_XP) {
     modifier = student[StudProp.XP_MODIFIER];
   } else if (data.pointType === StudProp.MANA_POINTS) {
@@ -28,7 +29,9 @@ const addValue = async (data) => {
     student[data.pointType],
     data.value,
     modifier,
-    data.pointType === StudProp.MANA_POINTS
+    student.class,
+    data.pointType,
+    data.isDuel
   );
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
     student[StudProp.SKILL_COUNTER]++;
@@ -72,12 +75,21 @@ const increaseXpModifiersAfterClanLevelUp = async (students, studentIdList, valu
 
 }
 
-const countNewValue = (oldValue, incomingValue, modifier, isMana) => {
+const countNewValue = (oldValue, incomingValue, modifier, studentClass, pointType, isDuel) => {
+  if (studentClass === Classes.BARD && pointType === StudProp.MANA_POINTS) {
+    modifier += 10
+  }
   if (modifier) {
     incomingValue *= (100 + modifier) / 100;
   }
+  if (studentClass === Classes.ADVENTURER && pointType === StudProp.PET_FOOD) {
+    incomingValue *= 2;
+  }
+  if (studentClass === Classes.WARRIOR && pointType === StudProp.LESSON_XP && isDuel) {
+    incomingValue *= 2;
+  }
   let newValue = oldValue + incomingValue;
-  if (isMana && newValue > 600) {
+  if (pointType === StudProp.MANA_POINTS && newValue > 600) {
     newValue = 600;
   }
   newValue = newValue < 0 ? 0 : newValue;
@@ -93,7 +105,15 @@ const addValueToAll = async (data) => {
     if (data.exclude.includes(student._id.toString())) {
       return;
     }
-    student[data.pointType] += data.value
+    if (student.class === Classes.ADVENTURER && data.pointType === StudProp.PET_FOOD) {
+      const value = data.value * 2;
+      student[data.pointType] += value
+    } else if (student.class === Classes.BARD && data.pointType === StudProp.MANA_POINTS) {
+      const value = data.value * (110 / 100);
+      student[data.pointType] += value
+    } else {
+      student[data.pointType] += data.value
+    }
   })
 
   const result = await RealmTransaction.saveRealm(realm);
