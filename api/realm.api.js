@@ -20,7 +20,6 @@ module.exports = function (app) {
     res.send(await RealmService.addValue(req.body, res));
   });
 
-
   /* 
     request: 
     {
