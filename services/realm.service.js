@@ -329,6 +329,39 @@ const createClans = async (realmId, clans) => {
   return responseMessage.REALM.CLAN_ADD_FAIL;
 }
 
+const resetRealm = async (realmId) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  realm.students.forEach(student => {
+    student[StudProp.CLASS] = null,
+    student[StudProp.CLAN] = null,
+    student[StudProp.LEVEL] = 1,
+    student[StudProp.CUMULATIVE_XP] = 0,
+    student[StudProp.XP_MODIFIER] = 0,
+    student[StudProp.LESSON_XP] = 0,
+    student[StudProp.MANA_POINTS] = 0,
+    student[StudProp.MANA_MODIFIER] = 0,
+    student[StudProp.SKILL_COUNTER] = 0,
+    student[StudProp.PET_FOOD] = 0,
+    student[StudProp.CURSE_POINTS] = 0,
+    student[StudProp.DUEL_COUNT] = 0
+  });
+  realm.clans = [];
+  const backup = await BackupService.getBackup();
+  const realmBackup = backup.realms[realm._id.toString()];
+  realmBackup.list = [];
+
+  // TODO define result
+  const result = await RealmTransaction.saveAfterReset(realm, backup);
+  await SheetService.syncSheet(realm, realm.name);
+  // if (result) {
+  //   return result;
+  // }
+  // return responseMessage.REALM.CLAN_ADD_FAIL;
+}
+
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
@@ -340,5 +373,6 @@ module.exports = {
   addStudents: addStudents,
   createClans: createClans,
   modifyRealm: modifyRealm,
-  getBackupData: getBackupData
+  getBackupData: getBackupData,
+  resetRealm: resetRealm
 };

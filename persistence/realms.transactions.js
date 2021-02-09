@@ -16,6 +16,24 @@ const saveRealm = async (realm) => {
   }
 }
 
+const saveAfterReset = async (realm, backup) => {
+  const transaction = new Transaction(true);
+  realm.markModified('students');
+  realm.markModified('clans');
+  backup.markModified('realms');
+  transaction.insert(schemas.REALM, realm);
+  transaction.insert(schemas.BACKUP_LIST, backup);
+  try {
+    await transaction.run();
+    return true;
+  } catch (err) {
+    console.error(err);
+    await transaction.rollback();
+    return false;
+  }
+}
+
 module.exports = {
-  saveRealm: saveRealm
+  saveRealm: saveRealm,
+  saveAfterReset: saveAfterReset
 }

@@ -134,8 +134,11 @@ const addStudentsToSheet = async (realmId, realmName, students) => {
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
     const currentClan = findElemById(realm.clans, student[StudProp[CommonKeys.CLAN]]);
-    const currentClanName = currentClan.name;
-    if (currentClanId !== student[StudProp[CommonKeys.CLAN]]) {
+    let currentClanName;
+    if (currentClan) {
+      currentClanName = currentClan.name;
+    }
+    if (currentClanName && currentClanId !== student[StudProp[CommonKeys.CLAN]]) {
       await sheet.addRow({
         [SheetHeaders[CommonKeys.CLAN]]: currentClanName
       });

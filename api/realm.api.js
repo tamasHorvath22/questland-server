@@ -46,6 +46,16 @@ module.exports = function (app) {
   /* 
     request: 
     {
+      realmId: the Id of the realm to reset
+    }
+  */
+  app.post("/reset-realm", jsonParser, async (req, res) => {
+    res.send(await RealmService.resetRealm(req.body.realmId));
+  });
+
+  /* 
+    request: 
+    {
       realmId: the ID of realm
       students: the list of new students
     }
