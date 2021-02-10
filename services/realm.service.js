@@ -288,6 +288,14 @@ const addStudents = async (realmId, students) => {
       [StudProp.DUEL_COUNT]: 0,
     }))
   })
+
+  studentList.forEach(student => {
+    if (student.clan) {
+      const savedClan = findElemById(realm.clans, student.clan);
+      savedClan.students.push(student._id)
+    }
+  })
+
   realm.students.push(...studentList);
   const savedRealm = await RealmTransaction.saveRealm(realm);
   if (savedRealm) {
