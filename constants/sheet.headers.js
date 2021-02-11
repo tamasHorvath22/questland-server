@@ -6,6 +6,7 @@ module.exports = Object.freeze({
   [keys.CLAN]: 'Clan',
   [keys.CLASS]: 'Class',
   [keys.LEVEL]: 'Level',
+  gloryPoints: 'GloryPoints',
   [keys.CUMULATIVE_XP]: 'CUMULATIVE XP',
   [keys.XP_MODIFIER]: 'XP\nmodifiers',
   [keys.LESSON_XP]: 'LESSON XP',

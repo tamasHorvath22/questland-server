@@ -148,7 +148,7 @@ const addLessonXpToSumXp = async (realmId) => {
     return responseMessage.DATABASE.ERROR;
   }
   await BackupService.saveBackup(modifiedRealm);
-  await SheetService.syncSheet(modifiedRealm, modifiedRealm.name);
+  await SheetService.syncSheet(modifiedRealm, modifiedRealm.name, null);
   return modifiedRealm;
 };
 
@@ -373,7 +373,7 @@ const resetRealm = async (realmId) => {
 
   // TODO define result
   const result = await RealmTransaction.saveAfterReset(realm, backup);
-  await SheetService.syncSheet(realm, realm.name);
+  await SheetService.syncSheet(realm, realm.name, null);
   // if (result) {
   //   return result;
   // }
