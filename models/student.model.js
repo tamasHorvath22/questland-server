@@ -7,7 +7,7 @@ const studentSchema = new Schema({
   [StudProp.NAME]: { type : String, required: true },
   [StudProp.CLASS]: { type : String, required: true },
   [StudProp.CLAN]: { type : String, required: true },
-  [StudProp.LEVEL]: { type : String, required: true },
+  [StudProp.LEVEL]: { type : Number, required: true },
   [StudProp.CUMULATIVE_XP]: { type : Number, required: true },
   [StudProp.XP_MODIFIER]: { type : Number, required: true },
   [StudProp.LESSON_XP]: { type : Number, required: true },
