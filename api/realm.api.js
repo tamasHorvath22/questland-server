@@ -100,6 +100,22 @@ module.exports = function (app) {
     request: 
     {
       realmId: the ID of realm
+      clanId: the ID of clan,
+      points: the points to add
+    }
+  */
+  app.post("/add-glory-points", jsonParser, async (req, res) => {
+    res.send(await RealmService.addGloryPoints(
+      req.body.realmId,
+      req.body.clanId,
+      req.body.points
+    ));
+  });
+
+  /* 
+    request: 
+    {
+      realmId: the ID of realm
       time: the timestamp of backup
     }
   */

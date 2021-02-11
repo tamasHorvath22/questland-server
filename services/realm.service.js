@@ -52,10 +52,14 @@ const manageGloryPointsAfterDuel = async (realm, student) => {
   }
   const studentClan = findElemById(realm.clans, student.clan);
   studentClan.gloryPoints += 5;
-  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
   if (studentClan.level === 5) {
     return;
   }
+  await checkClanLevelUp(realm, studentClan);
+}
+
+const checkClanLevelUp = async (realm, studentClan) => {
+  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
   if (clanTresholds === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
@@ -134,7 +138,7 @@ const addLessonXpToSumXp = async (realmId) => {
     student[StudProp.LESSON_XP] = 0;
   })
 
-  const levelUpResult = await checkLevelUp(realm);
+  const levelUpResult = await checkStudentLevelUp(realm);
   if (levelUpResult === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR
   }
@@ -148,7 +152,7 @@ const addLessonXpToSumXp = async (realmId) => {
   return modifiedRealm;
 };
 
-const checkLevelUp = async (realm) => {
+const checkStudentLevelUp = async (realm) => {
   const classesObj = await ClassDoc.getClasses();
   if (classesObj === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
@@ -206,8 +210,11 @@ const getRealm = async (realmId) => {
 
 const getBackupData = async (realmId) => {
   const backup = await BackupDoc.getBackup();
-  const realmBackup = backup.realms[realmId.toString()];
   const saveTimeList = [];
+  const realmBackup = backup.realms[realmId.toString()];
+  if (!realmBackup) {
+    return saveTimeList;
+  }
   realmBackup.list.forEach(elem => {
     saveTimeList.push(elem.time);
   });
@@ -392,6 +399,20 @@ const addTest = async (realmId, points) => {
   return result ? result : responseMessage.COMMON.ERROR;
 }
 
+const addGloryPoints = async (realmId, clanId, points) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const studentClan = findElemById(realm.clans, clanId);
+  studentClan.gloryPoints += points;
+  if (studentClan.level < 5) {
+    await checkClanLevelUp(realm, studentClan);
+  }
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.COMMON.ERROR;
+}
+
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
@@ -405,5 +426,6 @@ module.exports = {
   modifyRealm: modifyRealm,
   getBackupData: getBackupData,
   resetRealm: resetRealm,
-  addTest: addTest
+  addTest: addTest,
+  addGloryPoints: addGloryPoints
 };
