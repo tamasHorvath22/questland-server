@@ -19,20 +19,7 @@ const addValue = async (data) => {
     return responseMessage.DATABASE.ERROR;
   }
   const student = findElemById(realm.students, data.studentId);
-  let modifier = 0;
-  if (data.pointType === StudProp.LESSON_XP) {
-    modifier = student[StudProp.XP_MODIFIER];
-  } else if (data.pointType === StudProp.MANA_POINTS) {
-    modifier = student[StudProp.MANA_MODIFIER];
-  }
-  student[data.pointType] = countNewValue(
-    student[data.pointType],
-    data.value,
-    modifier,
-    student.class,
-    data.pointType,
-    data.isDuel
-  );
+  student[data.pointType] = countModifiedValue(student, data.value, data.pointType, data.isDuel);
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
     student[StudProp.SKILL_COUNTER]++;
   }
@@ -74,28 +61,34 @@ const checkClanLevelUp = async (realm, studentClan) => {
   }
 }
 
-const increaseXpModifiersAfterClanLevelUp = async (students, studentIdList, value) => {
+const increaseXpModifiersAfterClanLevelUp = (students, studentIdList, value) => {
   studentIdList.forEach(studentId => {
     const student = findElemById(students, studentId);
     student[StudProp[CommonKeys.XP_MODIFIER]] += value;
   });
-
 }
 
-const countNewValue = (oldValue, incomingValue, modifier, studentClass, pointType, isDuel) => {
-  if (studentClass === Classes.BARD && pointType === StudProp.MANA_POINTS) {
+const countModifiedValue = (student, incomingValue, pointType, isDuel) => {
+  let modifier = 0;
+  if (pointType === StudProp.LESSON_XP) {
+    modifier = student[StudProp.XP_MODIFIER];
+  } else if (pointType === StudProp.MANA_POINTS) {
+    modifier = student[StudProp.MANA_MODIFIER];
+  }
+
+  if (student.class === Classes.BARD && pointType === StudProp.MANA_POINTS) {
     modifier += 10
   }
   if (modifier) {
     incomingValue *= (100 + modifier) / 100;
   }
-  if (studentClass === Classes.ADVENTURER && pointType === StudProp.PET_FOOD) {
+  if (student.class === Classes.ADVENTURER && pointType === StudProp.PET_FOOD) {
     incomingValue *= 2;
   }
-  if (studentClass === Classes.WARRIOR && pointType === StudProp.LESSON_XP && isDuel) {
+  if (student.class === Classes.WARRIOR && pointType === StudProp.LESSON_XP && isDuel) {
     incomingValue *= 2;
   }
-  let newValue = oldValue + incomingValue;
+  let newValue = student[pointType] + incomingValue;
   if (pointType === StudProp.MANA_POINTS && newValue > 600) {
     newValue = 600;
   }
@@ -112,15 +105,16 @@ const addValueToAll = async (data) => {
     if (data.exclude.includes(student._id.toString())) {
       return;
     }
+
+    let points = data.value;
     if (student.class === Classes.ADVENTURER && data.pointType === StudProp.PET_FOOD) {
-      const value = data.value * 2;
-      student[data.pointType] += value
+      points = data.value * 2;
     } else if (student.class === Classes.BARD && data.pointType === StudProp.MANA_POINTS) {
-      const value = data.value * (110 / 100);
-      student[data.pointType] += value
-    } else {
-      student[data.pointType] += data.value
+      points = data.value * (110 / 100);
     }
+
+    points = countModifiedValue(student, points, data.pointType, false);
+    student[data.pointType] = points;
   })
 
   const result = await RealmTransaction.saveRealm(realm);
