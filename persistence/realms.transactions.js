@@ -24,8 +24,8 @@ const saveAfterReset = async (realm, backup) => {
   transaction.insert(schemas.REALM, realm);
   transaction.insert(schemas.BACKUP_LIST, backup);
   try {
-    await transaction.run();
-    return true;
+    const result = await transaction.run();
+    return result[0];
   } catch (err) {
     console.error(err);
     await transaction.rollback();

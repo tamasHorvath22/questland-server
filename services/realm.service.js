@@ -368,10 +368,10 @@ const resetRealm = async (realmId) => {
   // TODO define result
   const result = await RealmTransaction.saveAfterReset(realm, backup);
   await SheetService.syncSheet(realm, realm.name, null);
-  // if (result) {
-  //   return result;
-  // }
-  // return responseMessage.REALM.CLAN_ADD_FAIL;
+  if (result) {
+    return result;
+  }
+  return responseMessage.REALM.CLAN_ADD_FAIL;
 }
 
 const addTest = async (realmId, points) => {
