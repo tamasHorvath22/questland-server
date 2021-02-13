@@ -19,7 +19,15 @@ const addValue = async (data) => {
     return responseMessage.DATABASE.ERROR;
   }
   const student = findElemById(realm.students, data.studentId);
-  student[data.pointType] = countModifiedValue(student, data.value, data.pointType, data.isDuel);
+  const clanLevel = getStudentClanLevel(student, realm.clans);
+  student[data.pointType] = await countModifiedValue(
+    student,
+    data.value,
+    data.pointType,
+    data.isDuel,
+    clanLevel,
+    false
+  );
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
     student[StudProp.SKILL_COUNTER]++;
   }
@@ -53,25 +61,23 @@ const checkClanLevelUp = async (realm, studentClan) => {
   const nextClanLevel = studentClan.level + 1;
   if (studentClan.gloryPoints >= clanTresholds[nextClanLevel].treshold) {
     studentClan.level++;
-    increaseXpModifiersAfterClanLevelUp(
-      realm.students,
-      studentClan.students,
-      clanTresholds[nextClanLevel].xpmodifierIncrease
-    );
   }
 }
 
-const increaseXpModifiersAfterClanLevelUp = (students, studentIdList, value) => {
-  studentIdList.forEach(studentId => {
-    const student = findElemById(students, studentId);
-    student[StudProp[CommonKeys.XP_MODIFIER]] += value;
-  });
+const getClanXpModifier = async (clanLevel, isTest) => {
+  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
+  let modifier = clanTresholds[clanLevel].xpModifierIncrease;
+  if (isTest) {
+    modifier += clanTresholds[clanLevel].testXpModifierIncrease;
+  }
+  return modifier;
 }
 
-const countModifiedValue = (student, incomingValue, pointType, isDuel) => {
+const countModifiedValue = async (student, incomingValue, pointType, isDuel, clanLevel, isTest) => {
   let modifier = 0;
   if (pointType === StudProp.LESSON_XP) {
-    modifier = student[StudProp.XP_MODIFIER];
+    modifier = await getClanXpModifier(clanLevel, isTest);
+    modifier += student[StudProp.XP_MODIFIER];
   } else if (pointType === StudProp.MANA_POINTS) {
     modifier = student[StudProp.MANA_MODIFIER];
   }
@@ -85,7 +91,7 @@ const countModifiedValue = (student, incomingValue, pointType, isDuel) => {
   if (student.class === Classes.ADVENTURER && pointType === StudProp.PET_FOOD) {
     incomingValue *= 2;
   }
-  if (student.class === Classes.WARRIOR && pointType === StudProp.LESSON_XP && isDuel) {
+  if (isDuel && student.class === Classes.WARRIOR && pointType === StudProp.LESSON_XP) {
     incomingValue *= 2;
   }
   let newValue = student[pointType] + incomingValue;
@@ -101,7 +107,7 @@ const addValueToAll = async (data) => {
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  realm.students.forEach(student => {
+  realm.students.forEach(async (student) => {
     if (data.exclude.includes(student._id.toString())) {
       return;
     }
@@ -113,12 +119,22 @@ const addValueToAll = async (data) => {
       points = data.value * (110 / 100);
     }
 
-    points = countModifiedValue(student, points, data.pointType, false);
-    student[data.pointType] = points;
+    const clanLevel = getStudentClanLevel(student, realm.clans);
+
+    student[data.pointType] = await countModifiedValue(student, points, data.pointType, false, clanLevel, false);
   })
 
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.COMMON.ERROR;
+}
+
+const getStudentClanLevel = (student, clans) => {
+  let clanLevel = 1;
+  if (student.clan) {
+    const clan = findElemById(clans, student.clan);
+    clanLevel = clan.level;
+  }
+  return clanLevel;
 }
 
 const addLessonXpToSumXp = async (realmId) => {
@@ -152,14 +168,14 @@ const checkStudentLevelUp = async (realm) => {
     return responseMessage.DATABASE.ERROR;
   }
   realm.students.forEach(student => {
-    if (student[StudProp[CommonKeys.LEVEL]] === 8) {
+    if (student.level === 8) {
       return;
     }
-    const nextLevel = student[StudProp[CommonKeys.LEVEL]] + 1;
+    const nextLevel = student.level + 1;
     const treshold = classesObj.tresholds[nextLevel];
-    if (student[StudProp[CommonKeys.CUMULATIVE_XP]] >= treshold) {
-      const prevLevel = student[StudProp[CommonKeys.LEVEL]];
-      student[StudProp[CommonKeys.LEVEL]]++;
+    if (student.cumulativeXp >= treshold) {
+      const prevLevel = student.level;
+      student.level++;
       if (prevLevel % 2 === 0) {
         checkAllStudentInClanLevelUp(realm, student._id);
       }
@@ -381,13 +397,11 @@ const addTest = async (realmId, points) => {
   }
   points.forEach(test => {
     const student = findElemById(realm.students, test.id);
-    let xp = test.xp;
+    const clanLevel = getStudentClanLevel(student, realm.clans);
     if (student.class === Classes.WIZARD) {
-      xp *= 2;
+      test.xp *= 2;
     }
-    xp *= (100 + student.xpModifier) / 100;
-    const floatValue = parseFloat(xp.toFixed(2));
-    student.lessonXp += floatValue;
+    student.lessonXp = countModifiedValue(student, test.xp, StudProp.LESSON_XP, false, clanLevel, true);
   });
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.COMMON.ERROR;

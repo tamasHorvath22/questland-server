@@ -174,23 +174,28 @@ const createClanTresholds = async () => {
     const clanTresholds = ClanTresholds({
       1: {
         treshold: 0,
-        xpmodifierIncrease: 0
+        xpModifierIncrease: 0,
+        testXpModifierIncrease: 0
       },
       2: {
         treshold: 50,
-        xpmodifierIncrease: 5
+        xpModifierIncrease: 5,
+        testXpModifierIncrease: 0
       },
       3: {
         treshold: 150,
-        xpmodifierIncrease: 10
+        xpModifierIncrease: 10,
+        testXpModifierIncrease: 0
       },
       4: {
         treshold: 300,
-        xpmodifierIncrease: 20
+        xpModifierIncrease: 20,
+        testXpModifierIncrease: 2
       },
       5: {
         treshold: 500,
-        xpmodifierIncrease: 50
+        xpModifierIncrease: 50,
+        testXpModifierIncrease: 5
       }
     })
     await clanTresholds.save();
