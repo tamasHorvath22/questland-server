@@ -115,6 +115,16 @@ module.exports = function (app) {
   /* 
     request: 
     {
+      lessonMana: the value of mana given after a lesson
+    }
+  */
+  app.post("/set-lesson-mana", jsonParser, async (req, res) => {
+    res.send(await RealmService.setLessonMana(req.body.realmId, req.body.lessonMana));
+  });
+
+  /* 
+    request: 
+    {
       realmId: the ID of realm
       time: the timestamp of backup
     }

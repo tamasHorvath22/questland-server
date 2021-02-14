@@ -111,17 +111,8 @@ const addValueToAll = async (data) => {
     if (data.exclude.includes(student._id.toString())) {
       return;
     }
-
-    let points = data.value;
-    if (student.class === Classes.ADVENTURER && data.pointType === StudProp.PET_FOOD) {
-      points = data.value * 2;
-    } else if (student.class === Classes.BARD && data.pointType === StudProp.MANA_POINTS) {
-      points = data.value * (110 / 100);
-    }
-
     const clanLevel = getStudentClanLevel(student, realm.clans);
-
-    student[data.pointType] = await countModifiedValue(student, points, data.pointType, false, clanLevel, false);
+    student[data.pointType] = await countModifiedValue(student, data.value, data.pointType, false, clanLevel, false);
   })
 
   const result = await RealmTransaction.saveRealm(realm);
@@ -324,6 +315,7 @@ const addStudents = async (realmId, students) => {
 const createRealmToDb = async (realmName) => {
   const newRealm = Realm({
     name: realmName,
+    finishLessonMana: 0,
     students: []
   })
   try {
@@ -421,6 +413,16 @@ const addGloryPoints = async (realmId, clanId, points) => {
   return result ? result : responseMessage.COMMON.ERROR;
 }
 
+const setLessonMana = async (realmId, lessonMana) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  realm.finishLessonMana = lessonMana;
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.COMMON.ERROR;
+}
+
 module.exports = {
   addLessonXpToSumXp: addLessonXpToSumXp,
   addValue: addValue,
@@ -435,5 +437,6 @@ module.exports = {
   getBackupData: getBackupData,
   resetRealm: resetRealm,
   addTest: addTest,
-  addGloryPoints: addGloryPoints
+  addGloryPoints: addGloryPoints,
+  setLessonMana: setLessonMana
 };
