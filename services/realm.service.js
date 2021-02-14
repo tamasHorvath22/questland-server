@@ -94,7 +94,7 @@ const countModifiedValue = async (student, incomingValue, pointType, isDuel, cla
   if (isDuel && student.class === Classes.WARRIOR && pointType === StudProp.LESSON_XP) {
     incomingValue *= 2;
   }
-  let newValue = student[pointType] + incomingValue;
+  let newValue = await student[pointType] + incomingValue;
   if (pointType === StudProp.MANA_POINTS && newValue > 600) {
     newValue = 600;
   }
@@ -387,13 +387,13 @@ const addTest = async (realmId, points) => {
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  points.forEach(test => {
+  points.forEach(async (test) => {
     const student = findElemById(realm.students, test.id);
     const clanLevel = getStudentClanLevel(student, realm.clans);
     if (student.class === Classes.WIZARD) {
       test.xp *= 2;
     }
-    student.lessonXp = countModifiedValue(student, test.xp, StudProp.LESSON_XP, false, clanLevel, true);
+    student.lessonXp = await countModifiedValue(student, test.xp, StudProp.LESSON_XP, false, clanLevel, true);
   });
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.COMMON.ERROR;
