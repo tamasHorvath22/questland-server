@@ -46,21 +46,37 @@ const manageGloryPointsAfterDuel = async (realm, student) => {
     return;
   }
   const studentClan = findElemById(realm.clans, student.clan);
-  studentClan.gloryPoints += 5;
-  if (studentClan.level === 5) {
-    return;
-  }
-  await checkClanLevelUp(realm, studentClan);
+  await manageClanGloryPointsAndLevelUp(studentClan, 5);
 }
 
-const checkClanLevelUp = async (realm, studentClan) => {
+const manageClanGloryPointsAndLevelUp = async (studentClan, value) => {
   const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
   if (clanTresholds === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const nextClanLevel = studentClan.level + 1;
-  if (studentClan.gloryPoints >= clanTresholds[nextClanLevel].treshold) {
-    studentClan.level++;
+  // finds the next level, even if it is an addition or substaction
+  // if it is a substaction, the next level is the current level
+  const nextClanLevel = studentClan.level + (value > 0 ? 1 : 0);
+  studentClan.gloryPoints += value;
+  if (value >= 0) {
+    // if it is an addition
+    if (studentClan.level === 5) {
+      return;
+    }
+    if (studentClan.gloryPoints >= clanTresholds[nextClanLevel].treshold) {
+      studentClan.level++;
+    }
+  } else {
+    // if it is a substaction
+    if (studentClan.gloryPoints < 0) {
+      studentClan.gloryPoints = 0;
+    }
+    if (nextClanLevel === 1) {
+      return;
+    }
+    if (studentClan.gloryPoints < clanTresholds[nextClanLevel].treshold) {
+      studentClan.level--;
+    }
   }
 }
 
@@ -74,6 +90,11 @@ const getClanXpModifier = async (clanLevel, isTest) => {
 }
 
 const countModifiedValue = async (student, incomingValue, pointType, isDuel, clanLevel, isTest) => {
+  if (incomingValue < 0) {
+    let newValue = student[pointType] + incomingValue;
+    newValue = newValue < 0 ? 0 : newValue;
+    return parseFloat(newValue.toFixed(2));
+  }
   let modifier = 0;
   if (pointType === StudProp.LESSON_XP) {
     modifier = await getClanXpModifier(clanLevel, isTest);
@@ -94,7 +115,7 @@ const countModifiedValue = async (student, incomingValue, pointType, isDuel, cla
   if (isDuel && student.class === Classes.WARRIOR && pointType === StudProp.LESSON_XP) {
     incomingValue *= 2;
   }
-  let newValue = await student[pointType] + incomingValue;
+  let newValue = student[pointType] + incomingValue;
   if (pointType === StudProp.MANA_POINTS && newValue > 600) {
     newValue = 600;
   }
@@ -405,10 +426,7 @@ const addGloryPoints = async (realmId, clanId, points) => {
     return responseMessage.DATABASE.ERROR;
   }
   const studentClan = findElemById(realm.clans, clanId);
-  studentClan.gloryPoints += points;
-  if (studentClan.level < 5) {
-    await checkClanLevelUp(realm, studentClan);
-  }
+  await manageClanGloryPointsAndLevelUp(studentClan, points);
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.COMMON.ERROR;
 }
