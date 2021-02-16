@@ -58,6 +58,7 @@ const syncSheet = async (realm, sheetName, time) => {
     await addStudentsToSheet(realm._id, sheetName, realm.students, time);
   }
   await syncStudentData(realm.students, sheetName);
+  await syncClansData(realm.clans, sheetName);
 }
 
 const getClansInUseCount = (students) => {
@@ -143,7 +144,7 @@ const addStudentsToSheet = async (realmId, realmName, students, time) => {
     }
     if (currentClanName && currentClanId !== student[StudProp[CommonKeys.CLAN]]) {
       await sheet.addRow({
-        [SheetHeaders[CommonKeys.CLAN]]: currentClanName,
+        [SheetHeaders.clanName]: currentClanName,
         [SheetHeaders[CommonKeys.LEVEL]]: currentClan.level,
         [SheetHeaders.gloryPoints]: currentClan.gloryPoints
       });
@@ -183,6 +184,26 @@ const findElemById = (array, id) => {
   return array.find(e => e._id.toString() === id.toString());
 }
 
+const syncClansData = async (clans, sheetName) => {
+  const sheet = await accessSpreadsheet(sheetName);
+  const rows = await sheet.getRows();
+  for (let i = 0; i < clans.length; i++) {
+    const clan = clans[i];
+    const row = rows.find(row => {
+      const rowName = row[SheetHeaders.clanName].toString();
+      const clanName = clan.name.toString();
+      return rowName === clanName;
+    });
+    if (!row) {
+      continue;
+    }
+    row[SheetHeaders[CommonKeys.LEVEL]] = clan.level,
+    row[SheetHeaders.gloryPoints] = clan.gloryPoints
+    await row.save();
+    await sleep(1100);
+  }
+}
+
 const syncStudentData = async (students, realmName) => {
   const sheet = await accessSpreadsheet(realmName);
   const rows = await sheet.getRows();
@@ -198,7 +219,7 @@ const syncStudentData = async (students, realmName) => {
       return studentId === rowId;
     });
     if (!row) {
-      return;
+      continue;
     }
     const keys = Object.values(CommonKeys);
     for (let i = 0; i < keys.length; i++) {
