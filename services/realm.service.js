@@ -188,7 +188,7 @@ const checkStudentLevelUp = async (realm) => {
     if (student.cumulativeXp >= treshold) {
       const prevLevel = student.level;
       student.level++;
-      if (prevLevel % 2 === 0) {
+      if (student.clan && prevLevel % 2 === 0) {
         checkAllStudentInClanLevelUp(realm, student._id);
       }
     }
