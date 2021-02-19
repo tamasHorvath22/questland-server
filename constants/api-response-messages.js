@@ -8,7 +8,6 @@ module.exports = Object.freeze({
     NOT_FOUND: "NOT_FOUND",
     TOKEN_ERROR: "TOKEN_ERROR",
     MISSING_TOKEN: "MISSING_TOKEN",
-    USERNAME_TAKEN: "USERNAME_TAKEN",
     EMAIL_TAKEN: "EMAIL_TAKEN",
   },
   COMMON: {
@@ -48,5 +47,11 @@ module.exports = Object.freeze({
   },
   BACKUP: {
     NO_ELEMENT: 'NO_ELEMENT'
+  },
+  REGISTER: {
+    TOKEN_ERROR: 'TOKEN_ERROR',
+    USERNAME_TAKEN: 'USERNAME_TAKEN',
+    SUCCESS: 'SUCCESS',
+    NOT_SUCCESS: 'NOT_SUCCESS'
   }
 });
