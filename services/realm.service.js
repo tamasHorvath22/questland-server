@@ -375,6 +375,7 @@ const resetRealm = async (realmId) => {
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
+  realm.finishLessonMana = 0;
   realm.students.forEach(student => {
     student[StudProp.CLASS] = null,
     student[StudProp.CLAN] = null,
