@@ -50,7 +50,7 @@ async function register(userDto) {
     await user.save();
     return responseMessage.REGISTER.SUCCESS;
   } catch (err) {
-    console.error(err.keyPattern);
+    console.error(err);
     if (err.keyPattern.username) {
       return responseMessage.REGISTER.USERNAME_TAKEN;
     } else {
@@ -71,8 +71,7 @@ function generateJwtToken(user) {
   return jwt.sign(
     {
       username: user.username,
-      userId: user._id,
-      userEmail: user.email
+      userId: user._id
     },
     config.getJwtPrivateKey()
   );
