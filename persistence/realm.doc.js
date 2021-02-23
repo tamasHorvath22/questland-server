@@ -1,15 +1,15 @@
-const Class = require('../models/class.model');
+const Realm = require('../models/realm.model');
 const responseMessage = require('../constants/api-response-messages');
 
 module.exports = {
   getById: getById,
-  getByname: getByname,
-  getAll: getAll
+  getAll: getAll,
+  remove: remove
 }
 
 async function getById(id) {
   try {
-    return await Class.findById(id).exec();
+    return await Realm.findById(id).exec();
   } catch(err) {
     console.error(err);
     return responseMessage.DATABASE.ERROR;
@@ -18,16 +18,17 @@ async function getById(id) {
 
 async function getAll() {
   try {
-    return await Class.find({}).exec();
+    return await Realm.find({}).exec();
   } catch(err) {
     console.error(err);
     return responseMessage.DATABASE.ERROR;
   }
 }
 
-async function getByname(username) {
+async function remove(realmName) {
   try {
-    return await Class.findOne({ username: username }).exec();
+    const realm = Realm.findOne({ name: realmName })
+    await realm.remove().exec();
   } catch(err) {
     console.error(err);
     return responseMessage.DATABASE.ERROR;

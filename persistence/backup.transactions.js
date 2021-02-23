@@ -1,13 +1,13 @@
 const Transaction = require('mongoose-transactions');
 const schemas = require('../constants/schemas');
 
-const saveClass = async (eClass) => {
+const saveBackup = async (backup) => {
   const transaction = new Transaction(true);
-  eClass.markModified('students');
-  transaction.insert(schemas.CLASS, eClass);
+  backup.markModified('realms');
+  transaction.insert(schemas.BACKUP_LIST, backup);
   try {
-    await transaction.run();
-    return true
+    const result = await transaction.run();
+    return result[0];
   } catch (err) {
     console.error(err);
     await transaction.rollback();
@@ -16,5 +16,5 @@ const saveClass = async (eClass) => {
 }
 
 module.exports = {
-  saveClass: saveClass
+  saveBackup: saveBackup
 }

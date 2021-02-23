@@ -4,8 +4,8 @@ const Schema = mongoose.Schema;
 
 const classSchema = new Schema({
   name: { type : String, required: true },
-  students: { type : Array, required: true }
+  label: { type : String, required: true },
+  manaModifier: { type : Number }
 }, { timestamps: true });
 
 module.exports = mongoose.model(schemas.CLASS, classSchema);
-
