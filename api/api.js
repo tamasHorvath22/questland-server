@@ -30,9 +30,9 @@ module.exports = function (app, ProtectedRoutes) {
     }
   });
 
-  ProtectedRoutes.get("/logged-in", jsonParser, async (req, res) => {
-    res.send({ username: req.decoded.username });
-  });
+  // ProtectedRoutes.get("/logged-in", jsonParser, async (req, res) => {
+  //   res.send({ username: req.decoded.username });
+  // });
 
   userApi(app);
   // spreadsheetApi(ProtectedRoutes);
