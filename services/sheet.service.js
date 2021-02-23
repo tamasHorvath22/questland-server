@@ -44,17 +44,17 @@ const syncSheet = async (realm, sheetName, time) => {
     sheet = await accessSpreadsheet(sheetName);
   }
   const rows = await sheet.getRows();
+  sortStudents(realm);
   const clansInUse = getClansInUseCount(realm.students)
   const numOfRows = realm.students.length + clansInUse;
-  const clanAddedToStudent = isClanAddedToStudent(realm.students, rows);
-  
-  if (rows.length !== numOfRows || clanAddedToStudent) {
+  const studentClanChanged = isStudentClanChanged(realm.students, rows, realm.clans);
+
+  if (rows.length !== numOfRows || studentClanChanged) {
     await sheet.delete();
     const isSheetCreated = await createSheetForNewRealm(sheetName);
     if (!isSheetCreated) {
       return responseMessage.SHEET.SYNC_FAIL;
     }
-    sortStudents(realm);
     await addStudentsToSheet(realm._id, sheetName, realm.students, time);
   }
   await syncStudentData(realm.students, sheetName);
@@ -71,18 +71,27 @@ const getClansInUseCount = (students) => {
   return clansInUse.size;
 }
 
-const isClanAddedToStudent = (students, rows) => {
+const isStudentClanChanged = (students, rows, clans) => {
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
     const rowFound = rows.find(row => {
-      if (!row[SheetHeaders[CommonKeys.STUDENT_ID]]) {
+      if (!row[SheetHeaders.STUDENT_ID]) {
         return null;
       }
-      const rowId = row[SheetHeaders[CommonKeys.STUDENT_ID]].toString();
-      const studentId = student[StudProp[CommonKeys.STUDENT_ID]].toString();
+      const rowId = row[SheetHeaders.STUDENT_ID].toString();
+      const studentId = student[StudProp.STUDENT_ID].toString();
       return studentId === rowId;
     });
-    if (!rowFound || (!rowFound[SheetHeaders[CommonKeys.CLAN]] && student[StudProp[CommonKeys.CLAN]])) {
+    let studentClanName;
+    if (student[StudProp.CLAN]) {
+      const clan = findElemById(clans, student[StudProp.CLAN]);
+      studentClanName = clan.name;
+    }
+    if (
+      !rowFound ||
+      (!rowFound[SheetHeaders.CLAN] && student[StudProp.CLAN]) ||
+      rowFound[SheetHeaders.CLAN] && rowFound[SheetHeaders.CLAN] !== studentClanName
+    ) {
       return true;
     }
   }
@@ -114,10 +123,20 @@ const sortStudents = (realm) => {
   }
   const result = [];
   Object.keys(grouped).forEach(clan => {
+    // if there are students with no clans, they are pushed to the end
+    if (clan === 'null') {
+      return;
+    }
     grouped[clan].forEach(student => {
       result.push(student);
     })
   })
+  // if there are students with no clans, they are handeled here
+  if (grouped.null) {
+    grouped.null.forEach(student => {
+      result.push(student);
+    })
+  }
   realm.students = result;
 }
 
@@ -131,32 +150,40 @@ const addStudentsToSheet = async (realmId, realmName, students, time) => {
     return false;
   }
   const sheet = await accessSpreadsheet(realmName);
-  let currentClanId = null;
+
+  let currentClan;
+  let prevClanName;
+  let currentClanName;
+
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
-    let currentClan;
-    let currentClanName;
     if (student[StudProp[CommonKeys.CLAN]]) {
       currentClan = findElemById(realm.clans, student[StudProp[CommonKeys.CLAN]]);
       if (currentClan) {
         currentClanName = currentClan.name;
       }
+    } else {
+      currentClanName = null
     }
-    if (currentClanName && currentClanId !== student[StudProp[CommonKeys.CLAN]]) {
+    // if the clan does not exist on the sheet yet
+    if (currentClanName && currentClanName !== prevClanName) {
       await sheet.addRow({
         [SheetHeaders.clanName]: currentClanName,
-        [SheetHeaders[CommonKeys.LEVEL]]: currentClan.level,
+        [SheetHeaders.clanLevel]: currentClan.level,
         [SheetHeaders.gloryPoints]: currentClan.gloryPoints
       });
-      currentClanId = student[StudProp[CommonKeys.CLAN]];
+      prevClanName = currentClanName;
       await sleep(1100);
     }
+    // student base data added to sheet
     await sheet.addRow({
       [SheetHeaders[CommonKeys.NAME]]: student[StudProp[CommonKeys.NAME]],
       [SheetHeaders[CommonKeys.STUDENT_ID]]: student[StudProp[CommonKeys.STUDENT_ID]],
       [SheetHeaders[CommonKeys.CLAN]]: currentClanName
     });
+    await sleep(1100);
   }
+  // if it is a backup sync, the backup save date is added to sheet
   if (time) {
     const dateString = getDateString(time);
     await sheet.addRow({
@@ -197,7 +224,7 @@ const syncClansData = async (clans, sheetName) => {
     if (!row) {
       continue;
     }
-    row[SheetHeaders[CommonKeys.LEVEL]] = clan.level,
+    row[SheetHeaders.clanLevel] = clan.level,
     row[SheetHeaders.gloryPoints] = clan.gloryPoints
     await row.save();
     await sleep(1100);
