@@ -9,7 +9,7 @@ async function getClasses() {
   try {
     const elements = await Classes.find({}).exec();
     if (!elements.length) {
-      return responseMessage.DATABASE.ERROR;
+      return responseMessage.CLASSES.NO_ELEMENT;
     }
     return elements[0]
   } catch(err) {

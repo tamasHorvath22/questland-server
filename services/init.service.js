@@ -134,6 +134,7 @@ const createRealm = async () => {
 
 const createClasses = async () => {
   const classes = await ClassesDoc.getClasses();
+  console.log(classes)
   if (classes === responseMessage.CLASSES.NO_ELEMENT) {
     const classList = []
     const classes = Object.values(ClassEnum);
