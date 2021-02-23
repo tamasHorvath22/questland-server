@@ -27,37 +27,38 @@ async function login(userDto) {
     const token = generateJwtToken(user);
     return token;
 
-    // res.cookie("questland_token", token, { httpOnly: true });
-    // return { username: user.username };
   } catch (err) {
     console.error(err);
     return responseMessage.USER.AUTHENTICATION_ERROR;
   }
 }
 
-async function register(userDto, res) {
+async function register(userDto) {
+  // if no token set as env variable, the reg process is over
+  if (!process.env.REGISTER_TOKEN) {
+    return responseMessage.REGISTER.NOT_SUCCESS;
+  }
+  const token = decryptPassword(userDto.token);
+  if (process.env.REGISTER_TOKEN !== token) {
+    return responseMessage.REGISTER.TOKEN_ERROR;
+  }
   const user = User({
     username: userDto.username,
-    password: userDto.password, // decryptPassword(userDto.password),
-    email: userDto.email,
-    firstname: userDto.firstname,
-    lastname: userDto.lastname,
+    password: decryptPassword(userDto.password)
   });
   try {
     await user.save();
-    return responseMessage.USER.SUCCESSFUL_REGISTRATION;
+    return responseMessage.REGISTER.SUCCESS;
   } catch (err) {
-    console.error(err);
-    if (err.keyPattern.hasOwnProperty("username")) {
-      res.status(400);
-      return responseMessage.USER.USERNAME_TAKEN;
-    } else if (err.keyPattern.hasOwnProperty("email")) {
-      res.status(400);
-      return responseMessage.USER.EMAIL_TAKEN;
+    console.error(err.keyPattern);
+    if (err.keyPattern.username) {
+      return responseMessage.REGISTER.USERNAME_TAKEN;
     } else {
-      res.status(500);
-      return responseMessage.USER.UNSUCCESSFUL_REGISTRATION;
+      return responseMessage.REGISTER.NOT_SUCCESS;
     }
+    // else if (err.keyPattern.hasOwnProperty("email")) {
+    //   return responseMessage.USER.EMAIL_TAKEN;
+    // }
   }
 }
 

@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const userApi = require("./user.api");
 const spreadsheetApi = require("./spreadsheet.api");
-const classApi = require("./class.api");
+const realmApi = require("./realm.api");
 const config = require("../config");
 const responseMessage = require("../constants/api-response-messages");
 const bodyParser = require("body-parser");
@@ -36,5 +36,5 @@ module.exports = function (app, ProtectedRoutes) {
 
   userApi(app);
   // spreadsheetApi(ProtectedRoutes);
-  classApi(ProtectedRoutes)
+  realmApi(ProtectedRoutes)
 };
