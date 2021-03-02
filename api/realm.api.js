@@ -152,7 +152,7 @@ module.exports = function (app) {
   });
 
   app.get("/realms", jsonParser, async (req, res) => {
-    res.send(await RealmService.getRealms(res));
+    res.send(await RealmService.getRealms());
   });
 
   app.get("/classes", jsonParser, async (req, res) => {

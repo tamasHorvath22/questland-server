@@ -11,22 +11,24 @@ const Classes = require('../constants/classes');
 const CommonKeys = require('../constants/sheet.student.keys');
 const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
-const BackupService = require('./backup.service');
+const Backup = require('../models/backup.model');
 
 const addValue = async (data) => {
   const realm = await RealmDoc.getById(data.realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
+  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
   const student = findElemById(realm.students, data.studentId);
   const clanLevel = getStudentClanLevel(student, realm.clans);
-  student[data.pointType] = await countModifiedValue(
+  student[data.pointType] = countModifiedValue(
     student,
     data.value,
     data.pointType,
     data.isDuel,
     clanLevel,
-    false
+    false,
+    clanTresholds
   );
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
     student[StudProp.SKILL_COUNTER]++;
@@ -34,26 +36,23 @@ const addValue = async (data) => {
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
     if (data.isWinner) {
-      await manageGloryPointsAfterDuel(realm, student);
+      manageGloryPointsAfterDuel(realm, student, clanTresholds);
     }
   }
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.COMMON.ERROR;
 };
 
-const manageGloryPointsAfterDuel = async (realm, student) => {
+const manageGloryPointsAfterDuel = (realm, student, clanTresholds) => {
   if (!student.clan) {
     return;
   }
   const studentClan = findElemById(realm.clans, student.clan);
-  await manageClanGloryPointsAndLevelUp(studentClan, 5);
+  const gloryPointsForDuelWin = 5;
+  manageClanGloryPointsAndLevelUp(studentClan, gloryPointsForDuelWin, clanTresholds);
 }
 
-const manageClanGloryPointsAndLevelUp = async (studentClan, value) => {
-  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
-  if (clanTresholds === responseMessage.DATABASE.ERROR) {
-    return responseMessage.DATABASE.ERROR;
-  }
+const manageClanGloryPointsAndLevelUp = (studentClan, value, clanTresholds) => {
   // finds the next level, even if it is an addition or substaction
   // if it is a substaction, the next level is the current level
   const nextClanLevel = studentClan.level + (value > 0 ? 1 : 0);
@@ -80,8 +79,7 @@ const manageClanGloryPointsAndLevelUp = async (studentClan, value) => {
   }
 }
 
-const getClanXpModifier = async (clanLevel, isTest) => {
-  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
+const getClanXpModifier = (clanLevel, isTest, clanTresholds) => {
   let modifier = clanTresholds[clanLevel].xpModifierIncrease;
   if (isTest) {
     modifier += clanTresholds[clanLevel].testXpModifierIncrease;
@@ -89,7 +87,7 @@ const getClanXpModifier = async (clanLevel, isTest) => {
   return modifier;
 }
 
-const countModifiedValue = async (student, incomingValue, pointType, isDuel, clanLevel, isTest) => {
+const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel, isTest, clanTresholds) => {
   if (incomingValue < 0) {
     let newValue = student[pointType] + incomingValue;
     newValue = newValue < 0 ? 0 : newValue;
@@ -97,7 +95,7 @@ const countModifiedValue = async (student, incomingValue, pointType, isDuel, cla
   }
   let modifier = 0;
   if (pointType === StudProp.LESSON_XP) {
-    modifier = await getClanXpModifier(clanLevel, isTest);
+    modifier = getClanXpModifier(clanLevel, isTest, clanTresholds);
     modifier += student[StudProp.XP_MODIFIER];
   } else if (pointType === StudProp.MANA_POINTS) {
     modifier = student[StudProp.MANA_MODIFIER];
@@ -125,7 +123,8 @@ const countModifiedValue = async (student, incomingValue, pointType, isDuel, cla
 
 const addValueToAll = async (data) => {
   const realm = await RealmDoc.getById(data.realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
+  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
   realm.students.forEach(async (student) => {
@@ -133,11 +132,19 @@ const addValueToAll = async (data) => {
       return;
     }
     const clanLevel = getStudentClanLevel(student, realm.clans);
-    student[data.pointType] = await countModifiedValue(student, data.value, data.pointType, false, clanLevel, false);
+    student[data.pointType] = countModifiedValue(
+      student,
+      data.value,
+      data.pointType,
+      false,
+      clanLevel,
+      false,
+      clanTresholds
+    );
   })
 
   const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.COMMON.ERROR;
+  return result ? result : responseMessage.DATABASE.ERROR;
 }
 
 const getStudentClanLevel = (student, clans) => {
@@ -151,7 +158,13 @@ const getStudentClanLevel = (student, clans) => {
 
 const addLessonXpToSumXp = async (realmId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  const levelUpResult = await checkStudentLevelUp(realm);
+  const backup = await BackupDoc.getBackup();
+
+  if (
+    realm === responseMessage.DATABASE.ERROR ||
+    levelUpResult === responseMessage.DATABASE.ERROR ||
+    backup === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
 
@@ -160,20 +173,29 @@ const addLessonXpToSumXp = async (realmId) => {
     student[StudProp.LESSON_XP] = 0;
   })
 
-  const levelUpResult = await checkStudentLevelUp(realm);
-  if (levelUpResult === responseMessage.DATABASE.ERROR) {
-    return responseMessage.DATABASE.ERROR
+  saveBackup(realm, backup);
+  const result = await RealmTransaction.saveRealmAndBackup(realm, backup);
+  if (result) {
+    SheetService.syncSheet(realm, realm.name, null);
+    return result;
   }
-
-  const modifiedRealm = await RealmTransaction.saveRealm(realm);
-  if (!modifiedRealm) {
-    return responseMessage.DATABASE.ERROR;
-  }
-  console.log('realm saved!')
-  await BackupService.saveBackup(modifiedRealm);
-  SheetService.syncSheet(modifiedRealm, modifiedRealm.name, null);
-  return modifiedRealm;
+  return responseMessage.DATABASE.ERROR;
 };
+
+const saveBackup = (realm, backup) => {
+  const newBackup = Backup({
+    data: realm,
+    time: new Date().getTime()
+  });
+  const realmBackup = backup.realms[realm._id.toString()];
+  if (realmBackup) {
+    realmBackup.list.push(newBackup);
+  } else {
+    backup.realms[realm._id.toString()] = {
+      list: [newBackup]
+    }
+  }
+}
 
 const checkStudentLevelUp = async (realm) => {
   const classesObj = await ClassDoc.getClasses();
@@ -233,19 +255,20 @@ const getRealm = async (realmId) => {
 
 const getBackupData = async (realmId) => {
   const backup = await BackupDoc.getBackup();
+  if (backup === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
   const saveTimeList = [];
   const realmBackup = backup.realms[realmId.toString()];
-  if (!realmBackup) {
-    return saveTimeList;
+  if (realmBackup) {
+    realmBackup.list.forEach(elem => {
+      saveTimeList.push(elem.time);
+    });
   }
-  realmBackup.list.forEach(elem => {
-    saveTimeList.push(elem.time);
-  });
   return saveTimeList;
 }
 
 const getRealms = async () => {
-  // TODO refactor the properties
   const realms = await RealmDoc.getAll();
   if (realms === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
@@ -273,11 +296,6 @@ const createRealm = async (realmName) => {
   }
   const isSaveToDbSuccess = await createRealmToDb(realmName);
   if (isSaveToDbSuccess) {
-    const isSheetCreated = await SheetService.createSheetForNewRealm(realmName);
-    if (!isSheetCreated) {
-      RealmDoc.remove(realmName);
-      return responseMessage.REALM.CREATE_FAIL;
-    }
     return await getRealms();
   }
   return responseMessage.REALM.CREATE_FAIL;
@@ -291,7 +309,7 @@ const modifyRealm = async (realm) => {
   realmDb.students = realm.students
   realmDb.clans = realm.clans
   const savedRealm = await RealmTransaction.saveRealm(realmDb);
-  return savedRealm ? savedRealm : responseMessage.REALM.MODIFICATION_FAIL;
+  return savedRealm ? savedRealm : responseMessage.DATABASE.ERROR;
 }
 
 const addStudents = async (realmId, students) => {
@@ -331,14 +349,15 @@ const addStudents = async (realmId, students) => {
   if (savedRealm) {
     return savedRealm;
   }
-  return responseMessage.REALM.ADD_STUDENT_FAIL;
+  return responseMessage.DATABASE.ERROR;
 }
 
 const createRealmToDb = async (realmName) => {
   const newRealm = Realm({
     name: realmName,
     finishLessonMana: 0,
-    students: []
+    students: [],
+    clans: []
   })
   try {
     await newRealm.save();
@@ -365,15 +384,13 @@ const createClans = async (realmId, clans) => {
   });
   realm.clans.push(...clanList);
   const result = await RealmTransaction.saveRealm(realm);
-  if (result) {
-    return result;
-  }
-  return responseMessage.REALM.CLAN_ADD_FAIL;
+  return result ? result : responseMessage.DATABASE.ERROR;
 }
 
 const resetRealm = async (realmId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  const backup = await BackupDoc.getBackup();
+  if (realm === responseMessage.DATABASE.ERROR || backup === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
   realm.finishLessonMana = 0;
@@ -392,22 +409,21 @@ const resetRealm = async (realmId) => {
     student[StudProp.DUEL_COUNT] = 0
   });
   realm.clans = [];
-  const backup = await BackupService.getBackup();
   const realmBackup = backup.realms[realm._id.toString()];
   realmBackup.list = [];
 
-  // TODO define result
-  const result = await RealmTransaction.saveAfterReset(realm, backup);
-  await SheetService.syncSheet(realm, realm.name, null);
+  const result = await RealmTransaction.saveRealmAndBackup(realm, backup);
   if (result) {
+    SheetService.syncSheet(realm, realm.name, null);
     return result;
   }
-  return responseMessage.REALM.CLAN_ADD_FAIL;
+  return responseMessage.DATABASE.ERROR;
 }
 
 const addTest = async (realmId, points) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
+  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
   points.forEach(async (test) => {
@@ -416,19 +432,28 @@ const addTest = async (realmId, points) => {
     if (student.class === Classes.WIZARD) {
       test.xp *= 2;
     }
-    student.lessonXp = await countModifiedValue(student, test.xp, StudProp.LESSON_XP, false, clanLevel, true);
+    student.lessonXp = countModifiedValue(
+      student,
+      test.xp,
+      StudProp.LESSON_XP,
+      false,
+      clanLevel,
+      true,
+      clanTresholds
+    );
   });
   const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.COMMON.ERROR;
+  return result ? result : responseMessage.DATABASE.ERROR;
 }
 
 const addGloryPoints = async (realmId, clanId, points) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
+  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
   const studentClan = findElemById(realm.clans, clanId);
-  await manageClanGloryPointsAndLevelUp(studentClan, points);
+  manageClanGloryPointsAndLevelUp(studentClan, points, clanTresholds);
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.COMMON.ERROR;
 }
@@ -440,7 +465,7 @@ const setLessonMana = async (realmId, lessonMana) => {
   }
   realm.finishLessonMana = lessonMana;
   const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.COMMON.ERROR;
+  return result ? result : responseMessage.DATABASE.ERROR;
 }
 
 module.exports = {

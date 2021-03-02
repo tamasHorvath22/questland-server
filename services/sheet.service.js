@@ -1,13 +1,12 @@
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 const doc = new GoogleSpreadsheet(process.env.GOOGLE_SPREADSHEET_ID);
 const responseMessage = require("../constants/api-response-messages");
-const RealmDoc = require('../persistence/realm.doc');
 const StudProp = require('../constants/student.properties');
 const CommonKeys = require('../constants/sheet.student.keys');
 const SheetHeaders = require('../constants/sheet.headers');
-const BackupService = require('../services/backup.service');
+const BackupDoc = require('../persistence/backup.doc');
 const _ = require('underscore');
-const sleep = require('util').promisify(setTimeout);
+// const sleep = require('util').promisify(setTimeout);
 
 const loadSpreadsheet = async () => {
   try {
@@ -30,11 +29,14 @@ const accessSpreadsheet = async (realmName) => {
 };
 
 const syncBackup = async (realmId, time) => {
-  const backup = await BackupService.getBackup();
+  const backup = await BackupDoc.getBackup();
+  if (backup === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
   const realmBackups = backup.realms[realmId.toString()];
   const backupRealm = realmBackups.list.find(elem => elem.time === time);
   const sheetName = `${backupRealm.data.name} backup`
-  await syncSheet(backupRealm.data, sheetName, time);
+  syncSheet(backupRealm.data, sheetName, time);
 }
 
 const syncSheet = async (realm, sheetName, time) => {
