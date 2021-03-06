@@ -14,6 +14,7 @@ module.exports = Object.freeze({
     NO_CHANGES_MADE: "NO_CHANGES_MADE",
     ERROR: "ERROR",
     NOT_NUMBER: "NOT_NUMBER",
+    INVALID_DATA: "INVALID_DATA"
   },
   DATABASE: {
     ERROR: "DATABASE_ERROR",

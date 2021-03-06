@@ -1,0 +1,50 @@
+module.exports = [
+  { 
+    _id: "603408baecd71a466cd7e772",
+    name: "Béla",
+    class: "ADVENTURER",
+    clan: "603f3b5fb70c640024be589e",
+    level: 1,
+    cumulativeXp: 94.5,
+    xpModifier: 0,
+    lessonXp: 10.5,
+    manaPoints: 70,
+    manaModifier: 0,
+    skillUsed: 0,
+    petFood: 5,
+    cursePoints: 2,
+    duelCount: 1
+  },
+  {
+    _id: "603df26d9dbb783a48d60096",
+    name: "Butters",
+    class: "WARSMITH",
+    clan: "603f3b5fb70c640024be589f",
+    level: 1,
+    cumulativeXp: 50,
+    xpModifier:0,
+    lessonXp: 10,
+    manaPoints: 65,
+    manaModifier: 0,
+    skillUsed: 0,
+    petFood: 1,
+    cursePoints: 1,
+    duelCount:1
+  },
+  {
+    _id: "602b961f21ae205a2cdb9b61",
+    name: "Cartman",
+    class: "WARRIOR",
+    clan: "603f3b5fb70c640024be589e",
+    level: 1,
+    cumulativeXp: 102.75,
+    xpModifier: 0,
+    lessonXp: 31.5,
+    manaPoints: 70,
+    manaModifier: 0,
+    skillUsed: 0,
+    petFood: 2,
+    cursePoints: 1,
+    duelCount:6
+  }
+];
