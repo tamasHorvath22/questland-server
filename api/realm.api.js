@@ -30,7 +30,7 @@ module.exports = function (app) {
     }
   */
   app.post("/add-value-to-all", jsonParser, async (req, res) => {
-    res.send(await RealmService.addValueToAll(req.body, res));
+    res.send(await RealmService.addValueToAllApi(req.body, res));
   });
 
   /* 

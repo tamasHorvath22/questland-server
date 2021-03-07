@@ -19,5 +19,25 @@ module.exports = [
     name: "kettő",
     gloryPoints: 50,
     level: 2
+  },
+  {
+    students: [
+      "603df26d9dbb783a48d60096",
+      "602b9bf521ae205a2cdb9b78"
+    ],
+    _id: "603f3b5fb70c640024be589g",
+    name: "három",
+    gloryPoints: 500,
+    level: 5
+  },
+  {
+    students: [
+      "603df26d9dbb783a48d60096",
+      "602b9bf521ae205a2cdb9b78"
+    ],
+    _id: "603f3b5fb70c640024be589g",
+    name: "négy",
+    gloryPoints: 145,
+    level: 2
   }
 ];

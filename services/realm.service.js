@@ -73,7 +73,7 @@ const manageClanGloryPointsAndLevelUp = (studentClan, value) => {
   if (value >= 0) {
     // if it is an addition
     if (studentClan.level === 5) {
-      return;
+      return studentClan;
     }
     if (studentClan.gloryPoints >= ClanTresholds[nextClanLevel].treshold) {
       studentClan.level++;
@@ -84,12 +84,13 @@ const manageClanGloryPointsAndLevelUp = (studentClan, value) => {
       studentClan.gloryPoints = 0;
     }
     if (nextClanLevel === 1) {
-      return;
+      return studentClan;
     }
     if (studentClan.gloryPoints < ClanTresholds[nextClanLevel].treshold) {
       studentClan.level--;
     }
   }
+  return studentClan;
 }
 
 const getClanXpModifier = (clanLevel, isTest) => {
@@ -127,19 +128,33 @@ const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel
     incomingValue *= 2;
   }
   let newValue = student[pointType] + incomingValue;
+  // mana max value is 600, if it is over, it is set to 600
   if (pointType === StudProp.MANA_POINTS && newValue > 600) {
     newValue = 600;
   }
-  newValue = newValue < 0 ? 0 : newValue;
+  // newValue = newValue < 0 ? 0 : newValue;
   return parseFloat(newValue.toFixed(2));
 }
 
-const addValueToAll = async (data) => {
+const addValueToAllApi = async (data) => {
+  if (
+    !validIncomingPointTypes.includes(data.pointType) ||
+    isNaN(data.value) ||
+    !Array.isArray(data.exclude)
+  ) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
   const realm = await RealmDoc.getById(data.realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  realm.students.forEach(async (student) => {
+  const modifiedRealm = addValueToAll(realm, data);
+  const result = await RealmTransaction.saveRealm(modifiedRealm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const addValueToAll = (realm, data) => {
+  realm.students.forEach(student => {
     if (data.exclude.includes(student._id.toString())) {
       return;
     }
@@ -152,10 +167,8 @@ const addValueToAll = async (data) => {
       clanLevel,
       false
     );
-  })
-
-  const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.DATABASE.ERROR;
+  });
+  return realm;
 }
 
 const getStudentClanLevel = (studentClan, clans) => {
@@ -496,5 +509,9 @@ module.exports = {
   addGloryPoints: addGloryPoints,
   setLessonMana: setLessonMana,
   findElemById: findElemById,
-  getStudentClanLevel: getStudentClanLevel
+  getStudentClanLevel: getStudentClanLevel,
+  countModifiedValue: countModifiedValue,
+  addValue: addValue,
+  manageClanGloryPointsAndLevelUp: manageClanGloryPointsAndLevelUp,
+  addValueToAllApi: addValueToAllApi
 };
