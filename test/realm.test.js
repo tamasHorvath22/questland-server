@@ -236,4 +236,259 @@ describe('RealmService', () => {
       assert.strictEqual(result.students[1][StudProp.LESSON_XP], 5);
     });
   });
+
+  describe('resetRealm tests', () => {
+    it('should return 0 finishLessonMana', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.finishLessonMana, 0);
+    });
+    it('should return null as class', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].class, null);
+    });
+    it('should return null as class', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].clan, null);
+    });
+    it('should return 1 as level', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].level, 1);
+    });
+    it('should return 0 as cumulativeXp', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].cumulativeXp, 0);
+    });
+    it('should return 0 as xpModifier', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].xpModifier, 0);
+    });
+    it('should return 0 as lessonXp', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].lessonXp, 0);
+    });
+    it('should return 0 as manaPoints', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].manaPoints, 0);
+    });
+    it('should return 0 as manaModifier', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].manaModifier, 0);
+    });
+    it('should return 0 as skillUsed', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].skillUsed, 0);
+    });
+    it('should return 0 as petFood', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].petFood, 0);
+    });
+    it('should return 0 as cursePoints', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].cursePoints, 0);
+    });
+    it('should return 0 as duelCount', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].duelCount, 0);
+    });
+    it('should return 0 as clan list length', () => {
+      const result = RealmService.resetRealm(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.clans.length, 0);
+    });
+  });
+
+  describe('setModifiedStudent tests', () => {
+    it('should return newName as name', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: '',
+        clan: '',
+        xpModifier: 0,
+        manaModifier: 0
+      }
+      const result = RealmService.setModifiedStudent(JSON.parse(JSON.stringify(students[0])), modifiedStud);
+      assert.strictEqual(result.name, 'newName');
+    });
+    it('should return WIZARD as class', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WIZARD',
+        clan: '',
+        xpModifier: 0,
+        manaModifier: 0
+      }
+      const result = RealmService.setModifiedStudent(JSON.parse(JSON.stringify(students[0])), modifiedStud);
+      assert.strictEqual(result.class, 'WIZARD');
+    });
+    it('should return 10 as xpModifier', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WIZARD',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 10,
+        manaModifier: 0
+      }
+      const result = RealmService.setModifiedStudent(JSON.parse(JSON.stringify(students[0])), modifiedStud);
+      assert.strictEqual(result.xpModifier, 10);
+    });
+    it('should return 10 as manaModifier', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WIZARD',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 10,
+        manaModifier: 10
+      }
+      const result = RealmService.setModifiedStudent(JSON.parse(JSON.stringify(students[0])), modifiedStud);
+      assert.strictEqual(result.manaModifier, 10);
+    });
+  });
+
+  describe('areModifyStudentTypesWrong tests', () => {
+    it('should return true if name is empty string', () => {
+      const modifiedStud = {
+        name: '',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 10,
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if class is not valid', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH-',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 10,
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return false if class is null, others are valid', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: null,
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 10,
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, false);
+    });
+    it('should return true if clan is not valid', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f-',
+        xpModifier: 10,
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return false if clan is null, others are valid', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: null,
+        xpModifier: 10,
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, false);
+    });
+    it('should return true if xpModifier is not number', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 'l',
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if xpModifier is less than 0', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: -1,
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if manaModifier is not number', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 10,
+        manaModifier: 't'
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if manaModifier is less than 0', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: 10,
+        manaModifier: -10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+  });
+
+  describe('areClansWrong tests', () => {
+    it('should return false when clan is null', () => {
+      const studentClan = null;
+      const result = RealmService.areClansWrong(JSON.parse(JSON.stringify(realm)), studentClan);
+      assert.strictEqual(result, false);
+    });
+    it('should return false when clan is valid', () => {
+      const studentClan = '603f3b5fb70c640024be589e';
+      const result = RealmService.areClansWrong(JSON.parse(JSON.stringify(realm)), studentClan);
+      assert.strictEqual(result, false);
+    });
+    it('should return true when clan is invalid', () => {
+      const studentClan = '603f3b5fb70c640024be589e--';
+      const result = RealmService.areClansWrong(JSON.parse(JSON.stringify(realm)), studentClan);
+      assert.strictEqual(result, true);
+    });
+  });
+
+  describe('setStudentClans tests', () => {
+    it('should return with no changes if mewClan is null', () => {
+      const newClan = null;
+      const student = JSON.parse(JSON.stringify(realm.students[0]));
+      const result = RealmService.setStudentClans(JSON.parse(JSON.stringify(realm)), student, newClan);
+      const modifiedStudent = result.students.find(s => s._id.toString() === student._id.toString());
+      assert.strictEqual(modifiedStudent.clan, '603f3b5fb70c640024be589f');
+    });
+    it('should return with the same clan ID when no changes', () => {
+      const newClan = '603f3b5fb70c640024be589f';
+      const student = JSON.parse(JSON.stringify(realm.students[0]));
+      const result = RealmService.setStudentClans(JSON.parse(JSON.stringify(realm)), student, newClan);
+      const modifiedStudent = result.students.find(s => s._id.toString() === student._id.toString());
+      assert.strictEqual(modifiedStudent.clan, '603f3b5fb70c640024be589f');
+    });
+    it('should return new clan ID, added to new clan, removed from previous clan', () => {
+      const newClan = '603f3b5fb70c640024be589e';
+      const student = JSON.parse(JSON.stringify(realm.students[0]));
+      const result = RealmService.setStudentClans(JSON.parse(JSON.stringify(realm)), student, newClan);
+      const modifiedStudent = result.students.find(s => s._id.toString() === student._id.toString());
+      const prevClan = result.clans.find(c => c._id.toString() === '603f3b5fb70c640024be589f');
+      const newStudentClan = result.clans.find(c => c._id.toString() === '603f3b5fb70c640024be589e');
+      assert.strictEqual(modifiedStudent.clan, '603f3b5fb70c640024be589f');
+      assert.strictEqual(prevClan.students.indexOf('603df26d9dbb783a48d60096'), -1);
+      assert.strictEqual(newStudentClan.students.includes('603df26d9dbb783a48d60096'), true);
+    });
+  });
+
 });

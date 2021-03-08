@@ -50,14 +50,14 @@ module.exports = function (app) {
     }
   */
   app.post("/reset-realm", jsonParser, async (req, res) => {
-    res.send(await RealmService.resetRealm(req.body.realmId));
+    res.send(await RealmService.resetRealmApi(req.body.realmId));
   });
 
   /* 
     request: 
     {
       realmId: the ID of realm
-      students: the list of new students
+      students: the list of new students -> { name: student name, class: class, clan: clan }
     }
   */
   app.post("/add-students", jsonParser, async (req, res) => {
@@ -78,11 +78,11 @@ module.exports = function (app) {
   /* 
     request: 
     {
-      realm: the modified realm
+      student: the modified student -> { name, class, clan, xpModifier, manaModifier }
     }
   */
-  app.post("/modify-realm", jsonParser, async (req, res) => {
-    res.send(await RealmService.modifyRealm(req.body.realm));
+  app.post("/save-modified-student", jsonParser, async (req, res) => {
+    res.send(await RealmService.saveModifiedStudentApi(req.body.student));
   });
 
   /* 
