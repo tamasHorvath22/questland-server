@@ -32,6 +32,10 @@ const addValue = async (data) => {
   );
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
     student[StudProp.SKILL_COUNTER]++;
+    student[StudProp.PET_FOOD]++;
+    if (student.class === Classes.ADVENTURER) {
+      student[StudProp.PET_FOOD]++;
+    }
   }
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
