@@ -12,19 +12,13 @@ const ClanTresholds = require('../constants/clan.tresholds');
 const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
 const Backup = require('../models/backup.model');
-const validIncomingPointTypes = [StudProp.MANA_POINTS, StudProp.LESSON_XP, StudProp.PET_FOOD, StudProp.CURSE_POINTS];
+const validIncomingPointTypes = require('../constants/valid.incoming.point.types');
 
 
 const addValueApi = async (data) => {
   // Typecheck of input data. If pointType, value, isDuel or isWinner not from expected type, the function returns
-  // TODO create type check funtion
-  // TODO create unit test for it
-  if (
-    !validIncomingPointTypes.includes(data.pointType) ||
-    isNaN(data.value) ||
-    typeof data.isDuel !== "boolean" ||
-    typeof data.isWinner !== "boolean"
-  ) {
+  const areTypesWrong = areAddValueTypesWrong(data);
+  if (areTypesWrong) {
     return responseMessage.COMMON.INVALID_DATA;
   }
   const realm = await RealmDoc.getById(data.realmId);
@@ -47,6 +41,15 @@ const addValueApi = async (data) => {
   }
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const areAddValueTypesWrong = (data) => {
+  return (
+    !validIncomingPointTypes.includes(data.pointType) ||
+    isNaN(data.value) ||
+    typeof data.isDuel !== "boolean" ||
+    typeof data.isWinner !== "boolean"
+  )
 }
 
 const addValue = (data, student, clanLevel) => {
@@ -330,14 +333,53 @@ const createRealm = async (realmName) => {
   return responseMessage.REALM.CREATE_FAIL;
 }
 
-const addStudents = async (realmId, students) => {
+const areStudentsWrong = (realm, students) => {
+  if (!students || !students.length) {
+    return true;
+  }
+  const clanList = getRealmClans(realm);
+  const classes = Object.values(Classes);
+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    if (
+      !student.name ||
+      (student.class && !classes.includes(student.class)) ||
+      (clanList.length && student.clan && !clanList.includes(student.clan.toString()))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const getRealmStudentList = (students) => {
+  return students.map((student) => {
+    return student.name;
+  })
+}
+
+const addStudentsApi = async (realmId, students) => {
   const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
+  const studentsAreInvaild = areStudentsWrong(realm, students);
+  if (studentsAreInvaild) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  addStudents(realm, students);
+  const savedRealm = await RealmTransaction.saveRealm(realm);
+  return savedRealm ? savedRealm : responseMessage.DATABASE.ERROR;
+}
 
+const addStudents = (realm, students) => {
+  const savedStudents = getRealmStudentList(realm.students);
   const studentList = [];
   students.forEach(student => {
+    if (savedStudents.includes(student.name)) {
+      return;
+    }
     studentList.push(Student({
       [StudProp.NAME]: student.name,
       [StudProp.CLASS]: student.class,
@@ -352,22 +394,18 @@ const addStudents = async (realmId, students) => {
       [StudProp.PET_FOOD]: 0,
       [StudProp.CURSE_POINTS]: 0,
       [StudProp.DUEL_COUNT]: 0,
-    }))
+    }));
+    savedStudents.push(student.name);
   })
-
+  // another loop is needed because in the firts user has no ID yet
   studentList.forEach(student => {
     if (student.clan) {
       const savedClan = findElemById(realm.clans, student.clan);
       savedClan.students.push(student._id)
     }
   })
-
   realm.students.push(...studentList);
-  const savedRealm = await RealmTransaction.saveRealm(realm);
-  if (savedRealm) {
-    return savedRealm;
-  }
-  return responseMessage.DATABASE.ERROR;
+  return realm;
 }
 
 const createRealmToDb = async (realmName) => {
@@ -603,5 +641,8 @@ module.exports = {
   setModifiedStudent: setModifiedStudent,
   areModifyStudentTypesWrong: areModifyStudentTypesWrong,
   areClansWrong: areClansWrong,
-  setStudentClans: setStudentClans
+  setStudentClans: setStudentClans,
+  areAddValueTypesWrong: areAddValueTypesWrong,
+  areStudentsWrong: areStudentsWrong,
+  addStudentsApi: addStudentsApi
 };

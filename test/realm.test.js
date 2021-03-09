@@ -491,4 +491,265 @@ describe('RealmService', () => {
     });
   });
 
+  describe('areAddValueTypesWrong tests', () => {
+    it('should return false if all type is correct', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: 10,
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, false);
+    });
+    it('should return true if pointType is incorrect', () => {
+      const data = {
+        pointType: 'wrong',
+        value: 10,
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value is not number', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: 'not number',
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if duel is not boolean', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: 10,
+        isDuel: 1,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if isWinner is not boolean', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: 10,
+        isDuel: false,
+        isWinner: 'not booelean'
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+  });
+
+  describe('areStudentsWrong tests', () => {
+    it('should return false if all data is correct', () => {
+      const students = [
+        {
+          name: 'Géza',
+          class: StudProp.WARSMITH,
+          clan: '603f3b5fb70c640024be589e'
+        },
+        {
+          name: 'Béla',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589f'
+        }
+      ];
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), students);
+      assert.strictEqual(result, false);
+    });
+    it('should return true if students are null', () => {
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), null);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if students are empty', () => {
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), []);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if a user name is missig', () => {
+      const students = [
+        {
+          name: 'Géza',
+          class: StudProp.WARSMITH,
+          clan: '603f3b5fb70c640024be589e'
+        },
+        {
+          name: '',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589f'
+        }
+      ];
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), students);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if a user has no valid class', () => {
+      const students = [
+        {
+          name: 'Géza',
+          class: 'no valid class',
+          clan: '603f3b5fb70c640024be589e'
+        },
+        {
+          name: 'Béla',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589f'
+        }
+      ];
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), students);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if other user has no valid class', () => {
+      const students = [
+        {
+          name: 'Géza',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589e'
+        },
+        {
+          name: 'Béla',
+          class: 'no valid class',
+          clan: '603f3b5fb70c640024be589f'
+        }
+      ];
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), students);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if a user has no valid clan', () => {
+      const students = [
+        {
+          name: 'Géza',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589e----'
+        },
+        {
+          name: 'Béla',
+          class: StudProp.ADVENTURER,
+          clan: '603f3b5fb70c640024be589f'
+        }
+      ];
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), students);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if other user has no valid clan', () => {
+      const students = [
+        {
+          name: 'Géza',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589e'
+        },
+        {
+          name: 'Béla',
+          class: StudProp.ADVENTURER,
+          clan: '603f3b5fb70c640024be589f----'
+        }
+      ];
+      const result = RealmService.areStudentsWrong(JSON.parse(JSON.stringify(realm)), students);
+      assert.strictEqual(result, true);
+    });
+  });
+
+  describe('addStudents tests', () => {
+    it('should return valid users are added', () => {
+      const prevStudentList = realm.students.map(student => student.name);
+      let newCount = 0;
+      let otherCount = 0;
+      prevStudentList.forEach(student => {
+        if (student === 'new user') {
+          newCount++;
+        }
+        if (student === 'other user') {
+          otherCount++;
+        }
+      });
+      assert.strictEqual(newCount, 0);
+      assert.strictEqual(otherCount, 0);
+      const students = [
+        {
+          name: 'new user',
+          class: StudProp.WARSMITH,
+          clan: '603f3b5fb70c640024be589e'
+        },
+        {
+          name: 'other user',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589f'
+        }
+      ];
+      const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
+      const studentList = result.students.map(student => student.name);
+      newCount = 0;
+      otherCount = 0;
+      studentList.forEach(student => {
+        if (student === 'new user') {
+          newCount++;
+        }
+        if (student === 'other user') {
+          otherCount++;
+        }
+      });
+      assert.strictEqual(newCount, 1);
+      assert.strictEqual(otherCount, 1);
+    });
+    it('should return add only one student if there more with same name', () => {
+      const prevStudentList = realm.students.map(student => student.name);
+      let newCount = 0;
+      prevStudentList.forEach(student => {
+        if (student === 'new user') {
+          newCount++;
+        }
+      });
+      assert.strictEqual(newCount, 0);
+      const students = [
+        {
+          name: 'new user',
+          class: StudProp.WARSMITH,
+          clan: '603f3b5fb70c640024be589e'
+        },
+        {
+          name: 'new user',
+          class: StudProp.WIZARD,
+          clan: '603f3b5fb70c640024be589f'
+        }
+      ];
+      const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
+      const studentList = result.students.map(student => student.name);
+      newCount = 0;
+      studentList.forEach(student => {
+        if (student === 'new user') {
+          newCount++;
+        }
+      });
+      assert.strictEqual(newCount, 1);
+    });
+    it('should return not add student if the name is already exists', () => {
+      const prevStudentList = realm.students.map(student => student.name);
+      let newCount = 0;
+      prevStudentList.forEach(student => {
+        if (student === 'Butters') {
+          newCount++;
+        }
+      });
+      assert.strictEqual(newCount, 1);
+      const students = [
+        {
+          name: 'Butters',
+          class: StudProp.WARSMITH,
+          clan: '603f3b5fb70c640024be589e'
+        }
+      ];
+      const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
+      const studentList = result.students.map(student => student.name);
+      newCount = 0;
+      studentList.forEach(student => {
+        if (student === 'Butters') {
+          newCount++;
+        }
+      });
+      assert.strictEqual(newCount, 1);
+    });
+  });
+
 });

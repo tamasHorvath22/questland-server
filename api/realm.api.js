@@ -61,7 +61,7 @@ module.exports = function (app) {
     }
   */
   app.post("/add-students", jsonParser, async (req, res) => {
-    res.send(await RealmService.addStudents(req.body.realmId, req.body.students));
+    res.send(await RealmService.addStudentsApi(req.body.realmId, req.body.students));
   });
 
   /* 
