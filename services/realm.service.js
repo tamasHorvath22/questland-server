@@ -146,11 +146,8 @@ const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel
 }
 
 const addValueToAllApi = async (data) => {
-  if (
-    !validIncomingPointTypes.includes(data.pointType) ||
-    isNaN(data.value) ||
-    !Array.isArray(data.exclude)
-  ) {
+  const areInputWrong = areAddToAllValuesWrong(data);
+  if (areInputWrong) {
     return responseMessage.COMMON.INVALID_DATA;
   }
   const realm = await RealmDoc.getById(data.realmId);
@@ -160,6 +157,14 @@ const addValueToAllApi = async (data) => {
   const modifiedRealm = addValueToAll(realm, data);
   const result = await RealmTransaction.saveRealm(modifiedRealm);
   return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const areAddToAllValuesWrong = (data) => {
+  return (
+    !validIncomingPointTypes.includes(data.pointType) ||
+    isNaN(data.value) ||
+    !Array.isArray(data.exclude)
+  )
 }
 
 const addValueToAll = (realm, data) => {
@@ -648,5 +653,6 @@ module.exports = {
   setStudentClans: setStudentClans,
   areAddValueTypesWrong: areAddValueTypesWrong,
   areStudentsWrong: areStudentsWrong,
-  addStudentsApi: addStudentsApi
+  addStudentsApi: addStudentsApi,
+  areAddToAllValuesWrong: areAddToAllValuesWrong
 };

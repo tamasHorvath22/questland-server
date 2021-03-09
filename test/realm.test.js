@@ -78,83 +78,83 @@ describe('RealmService', () => {
   describe('countModifiedValue tests', () => {
     describe('negative values', () => {
       it('should return 10 mana when -60 is added', () => {
-        const result = RealmService.countModifiedValue(students[2], -60, StudProp.MANA_POINTS, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[2])), -60, StudProp.MANA_POINTS, false, 1, false);
         assert.strictEqual(result, 10);
       });
       it('should return 0 mana when -80 is added, and goes below 0', () => {
-        const result = RealmService.countModifiedValue(students[2], -80, StudProp.MANA_POINTS, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[2])), -80, StudProp.MANA_POINTS, false, 1, false);
         assert.strictEqual(result, 0);
       });
       it('should return 0 XP when -80 is added, and goes below 0', () => {
-        const result = RealmService.countModifiedValue(students[2], -80, StudProp.LESSON_XP, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[2])), -80, StudProp.LESSON_XP, false, 1, false);
         assert.strictEqual(result, 0);
       });
       it('should return 21.5 XP when -10 is added, no modifier when the value is negative', () => {
-        const result = RealmService.countModifiedValue(students[2], -10, StudProp.LESSON_XP, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[2])), -10, StudProp.LESSON_XP, false, 1, false);
         assert.strictEqual(result, 21.5);
       });
     });
     describe('mana points', () => {
       it('should return 100 mana points when 30 is added', () => {
-        const result = RealmService.countModifiedValue(students[3], 30, StudProp.MANA_POINTS, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[3])), 30, StudProp.MANA_POINTS, false, 1, false);
         assert.strictEqual(result, 100);
       });
       it('should return 600 mana points when it wolud be over 600', () => {
-        const result = RealmService.countModifiedValue(students[3], 2000, StudProp.MANA_POINTS, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[3])), 2000, StudProp.MANA_POINTS, false, 1, false);
         assert.strictEqual(result, 600);
       });
       it('should return 120 mana points when 100 added, and there is 20% modifier', () => {
-        const result = RealmService.countModifiedValue(students[4], 100, StudProp.MANA_POINTS, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[4])), 100, StudProp.MANA_POINTS, false, 1, false);
         assert.strictEqual(result, 120);
       });
     });
     describe('XP modifiers', () => {
       it('should return 36.5 floating point number when 5 is added', () => {
-        const result = RealmService.countModifiedValue(students[2], 5, StudProp.LESSON_XP, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[2])), 5, StudProp.LESSON_XP, false, 1, false);
         assert.strictEqual(result, 36.5);
       });
       it('should return 10 mana points - no own modifier, no clan modifier', () => {
-        const result = RealmService.countModifiedValue(students[0], 10, StudProp.LESSON_XP, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[0])), 10, StudProp.LESSON_XP, false, 1, false);
         assert.strictEqual(result, 10);
       });
       it('should return 10.5 mana points - no own modifier, 5% clan modifier', () => {
-        const result = RealmService.countModifiedValue(students[0], 10, StudProp.LESSON_XP, false, 2, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[0])), 10, StudProp.LESSON_XP, false, 2, false);
         assert.strictEqual(result, 10.5);
       });
       it('should return 12 mana points - 20% own modifier, no clan modifier', () => {
-        const result = RealmService.countModifiedValue(students[5], 10, StudProp.LESSON_XP, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[5])), 10, StudProp.LESSON_XP, false, 1, false);
         assert.strictEqual(result, 12);
       });
       it('should return 12.5 mana points - 20% own modifier, 5% clan modifier', () => {
-        const result = RealmService.countModifiedValue(students[5], 10, StudProp.LESSON_XP, false, 2, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[5])), 10, StudProp.LESSON_XP, false, 2, false);
         assert.strictEqual(result, 12.5);
       });  
     });
     describe('class specific modifiers', () => {
       it('should return 33 mana points - bard has 10% default modifier', () => {
-        const result = RealmService.countModifiedValue(students[5], 30, StudProp.MANA_POINTS, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[5])), 30, StudProp.MANA_POINTS, false, 1, false);
         assert.strictEqual(result, 33);
       });
       it('should return 7 pet food - adventurer x2 default modifier', () => {
-        const result = RealmService.countModifiedValue(students[0], 1, StudProp.PET_FOOD, false, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[0])), 1, StudProp.PET_FOOD, false, 1, false);
         assert.strictEqual(result, 7);
       });
       it('should return 41.5 XP - warrior x2 default test modifier', () => {
-        const result = RealmService.countModifiedValue(students[2], 5, StudProp.LESSON_XP, true, 1, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[2])), 5, StudProp.LESSON_XP, true, 1, false);
         assert.strictEqual(result, 41.5);
       });
       it('should return 42 XP - warrior x2 default test modifier + 2nd clan level 5%', () => {
-        const result = RealmService.countModifiedValue(students[2], 5, StudProp.LESSON_XP, true, 2, false);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[2])), 5, StudProp.LESSON_XP, true, 2, false);
         assert.strictEqual(result, 42);
       });
     });
     describe('test specific modifiers', () => {
       it('should return 77.5 XP - clan level 5 50% + 5% modifiers', () => {
-        const result = RealmService.countModifiedValue(students[0], 50, StudProp.LESSON_XP, false, 5, true);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[0])), 50, StudProp.LESSON_XP, false, 5, true);
         assert.strictEqual(result, 77.5);
       });
       it('should return 77.5 XP - clan level 5 50% + 5% modifiers + 20% own modifier', () => {
-        const result = RealmService.countModifiedValue(students[1], 50, StudProp.LESSON_XP, false, 5, true);
+        const result = RealmService.countModifiedValue(JSON.parse(JSON.stringify(students[1])), 50, StudProp.LESSON_XP, false, 5, true);
         assert.strictEqual(result, 87.5);
       });
     });
@@ -170,7 +170,7 @@ describe('RealmService', () => {
         isDuel: false,
         isWinner: false
       };
-      const result = RealmService.addValue(data, students[0], 1);
+      const result = RealmService.addValue(data, JSON.parse(JSON.stringify(students[0])), 1);
       assert.strictEqual(result[StudProp.SKILL_COUNTER], 1);
     });
     it('should return 2 as duel count', () => {
@@ -182,8 +182,32 @@ describe('RealmService', () => {
         isDuel: true,
         isWinner: false
       };
-      const result = RealmService.addValue(data, students[0], 1);
+      const result = RealmService.addValue(data, JSON.parse(JSON.stringify(students[0])), 1);
       assert.strictEqual(result[StudProp.DUEL_COUNT], 2);
+    });
+    it('should have 2 pet food after substracting mana ', () => {
+      const data = {
+        realmId: 'not needed',
+        studentId: 'not needed',
+        pointType: StudProp.MANA_POINTS,
+        value: -5,
+        isDuel: false,
+        isWinner: false
+      };
+      const result = RealmService.addValue(data, JSON.parse(JSON.stringify(students[1])), 1);
+      assert.strictEqual(result[StudProp.PET_FOOD], 2);
+    });
+    it('should have 7 pet food after substracting mana (Adventurer gets double)', () => {
+      const data = {
+        realmId: 'not needed',
+        studentId: 'not needed',
+        pointType: StudProp.MANA_POINTS,
+        value: -5,
+        isDuel: false,
+        isWinner: false
+      };
+      const result = RealmService.addValue(data, JSON.parse(JSON.stringify(students[0])), 1);
+      assert.strictEqual(result[StudProp.PET_FOOD], 7);
     });
   });
 
@@ -749,6 +773,49 @@ describe('RealmService', () => {
         }
       });
       assert.strictEqual(newCount, 1);
+    });
+  });
+
+  describe('areAddToAllValuesWrong tests', () => {
+    it('should return false if every prop is correct', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: 10,
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, false);
+    });
+    it('should return true if pointType is incorrect', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: 'incorrect',
+        value: 10,
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value type is incorrect', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: 'not ok',
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if exclude type is incorrect', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: 5,
+        exclude: 'not array'
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
     });
   });
 
