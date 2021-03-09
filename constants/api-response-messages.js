@@ -13,6 +13,7 @@ module.exports = Object.freeze({
   COMMON: {
     NO_CHANGES_MADE: "NO_CHANGES_MADE",
     ERROR: "ERROR",
+    SUCCESS: "SUCCESS",
     NOT_NUMBER: "NOT_NUMBER",
     INVALID_DATA: "INVALID_DATA"
   },

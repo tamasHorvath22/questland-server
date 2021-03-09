@@ -32,6 +32,22 @@ module.exports = {
       cursePoints: 2,
       duelCount: 6
     },
+    {
+      _id: '602b961f21ae205a2cdb9b62',
+      name: 'Cartman 2',
+      class: 'WARRIOR',
+      clan: null,
+      level: 1,
+      cumulativeXp: 105,
+      xpModifier: 0,
+      lessonXp: 10,
+      manaPoints: 70,
+      manaModifier: 0,
+      skillUsed: 0,
+      petFood: 3,
+      cursePoints: 2,
+      duelCount: 6
+    }
   ],
   clans: [
     {

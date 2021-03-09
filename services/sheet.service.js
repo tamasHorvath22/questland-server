@@ -34,9 +34,16 @@ const syncBackup = async (realmId, time) => {
     return responseMessage.DATABASE.ERROR;
   }
   const realmBackups = backup.realms[realmId.toString()];
+  if (!realmBackups) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
   const backupRealm = realmBackups.list.find(elem => elem.time === time);
+  if (!backupRealm) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
   const sheetName = `${backupRealm.data.name} backup`
   syncSheet(backupRealm.data, sheetName, time);
+  return responseMessage.COMMON.SUCCESS;
 }
 
 const syncSheet = async (realm, sheetName, time) => {

@@ -3,16 +3,22 @@ const RealmService = require('../services/realm.service');
 const MockStudents = require('./mock/students');
 const MockClans = require('./mock/clans');
 const MockRealm = require('./mock/realm');
+const MockRealmLevelUp = require('./mock/realm.for.level.up');
+const MockRealmLevelUp_2 = require('./mock/realm.level.up.2');
 const StudProp = require('../constants/student.properties');
 let clans;
 let students;
 let realm;
+let realmLevelUp;
+let realmLevelUp_2;
 
 describe('RealmService', () => {
   beforeEach(() => {
     students = MockStudents
     clans = MockClans;
     realm = MockRealm;
+    realmLevelUp = MockRealmLevelUp;
+    realmLevelUp_2 = MockRealmLevelUp_2;
   });
   describe('findElementById tests', () => {
     it('should return null if array is null', () => {
@@ -423,12 +429,56 @@ describe('RealmService', () => {
       const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
       assert.strictEqual(result, false);
     });
-    it('should return true if xpModifier is not number', () => {
+    it('should return true if xpModifier is string', () => {
       const modifiedStud = {
         name: 'newName',
         class: 'WARSMITH',
         clan: '603f3b5fb70c640024be589f',
         xpModifier: 'l',
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if xpModifier is boolean', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: true,
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if xpModifier is empty array', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: [],
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if xpModifier is not empty array', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: ['something'],
+        manaModifier: 10
+      }
+      const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if xpModifier is an object', () => {
+      const modifiedStud = {
+        name: 'newName',
+        class: 'WARSMITH',
+        clan: '603f3b5fb70c640024be589f',
+        xpModifier: {},
         manaModifier: 10
       }
       const result = RealmService.areModifyStudentTypesWrong(JSON.parse(JSON.stringify(realm)), modifiedStud);
@@ -536,10 +586,70 @@ describe('RealmService', () => {
       const result = RealmService.areAddValueTypesWrong(data);
       assert.strictEqual(result, true);
     });
-    it('should return true if value is not number', () => {
+    it('should return true if value is string', () => {
       const data = {
         pointType: StudProp.LESSON_XP,
         value: 'not number',
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value is boolean', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: true,
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value is empty array', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: [],
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value is not empty array', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: ['value'],
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value is object', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: {},
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value is null', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: null,
+        isDuel: false,
+        isWinner: false
+      }
+      const result = RealmService.areAddValueTypesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value is undefined', () => {
+      const data = {
+        pointType: StudProp.LESSON_XP,
+        value: undefined,
         isDuel: false,
         isWinner: false
       }
@@ -797,7 +907,7 @@ describe('RealmService', () => {
       const result = RealmService.areAddToAllValuesWrong(data);
       assert.strictEqual(result, true);
     });
-    it('should return true if value type is incorrect', () => {
+    it('should return true if value type is string', () => {
       const data = {
         realmId: 'not needed',
         pointType: StudProp.LESSON_XP,
@@ -817,6 +927,226 @@ describe('RealmService', () => {
       const result = RealmService.areAddToAllValuesWrong(data);
       assert.strictEqual(result, true);
     });
+    it('should return true if value type is boolean', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: false,
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value type is empty array', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: [],
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value type is not empty array', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: ['stuff'],
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value type is object', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: {},
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value type is null', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: null,
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
+    it('should return true if value type is undefined', () => {
+      const data = {
+        realmId: 'not needed',
+        pointType: StudProp.LESSON_XP,
+        value: undefined,
+        exclude: []
+      }
+      const result = RealmService.areAddToAllValuesWrong(data);
+      assert.strictEqual(result, true);
+    });
   });
+  describe('addLessonXpToSumXp tests', () => {
+    it('should match the XP values prev and after the call of the function', () => {
+      assert.strictEqual(students[2].cumulativeXp, 102.75);
+      assert.strictEqual(students[2].lessonXp, 31.5);
+      const result = RealmService.addLessonXpToSumXp(JSON.parse(JSON.stringify(students)));
+      assert.strictEqual(result[2].cumulativeXp, 134.25);
+      assert.strictEqual(result[2].lessonXp, 0);
+    });
+  });
+  describe('checkStudentLevelUp tests', () => {
+    it('should match the level values prev and after the call of the function', () => {
+      assert.strictEqual(realm.students[2].level, 1);
+      const result = RealmService.checkStudentLevelUp(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[2].level, 2);
+    });
+    it('should not change student level', () => {
+      assert.strictEqual(realm.students[0].level, 1);
+      const result = RealmService.checkStudentLevelUp(JSON.parse(JSON.stringify(realm)));
+      assert.strictEqual(result.students[0].level, 1);
+    });
+  });
+  describe('checkAllStudentInClanLevelUp tests', () => {
+    it('should match the level values prev and after the call of the function', () => {
+      const clan = realmLevelUp.clans.find(c => c._id.toString() === '603f3b5fb70c640024be589f');
+      assert.strictEqual(clan.gloryPoints, 0);
+      const result = RealmService.checkAllStudentInClanLevelUp(
+        JSON.parse(JSON.stringify(realmLevelUp)),
+        JSON.parse(JSON.stringify(realmLevelUp.students[1]))
+      );
+      const afterClan = result.clans.find(c => c._id.toString() === '603f3b5fb70c640024be589f');
+      assert.strictEqual(afterClan.gloryPoints, 30);
+    });
+    it('should not change glory points', () => {
+      const clan = realmLevelUp.clans.find(c => c._id.toString() === '603f3b5fb70c640024be589f');
+      assert.strictEqual(clan.gloryPoints, 0);
+      const result = RealmService.checkAllStudentInClanLevelUp(
+        JSON.parse(JSON.stringify(realmLevelUp_2)),
+        JSON.parse(JSON.stringify(realmLevelUp_2.students[1]))
+      );
+      const afterClan = result.clans.find(c => c._id.toString() === '603f3b5fb70c640024be589f');
+      assert.strictEqual(afterClan.gloryPoints, 0);
+    });
+  });
+  describe('createClans tests', () => {
+    it('should add all clans to realm', () => {
+      const newClans = [
+        { name: 'clan 1' },
+        { name: 'clan 2' },
+      ];
+      const beforeClanNames = realmLevelUp.clans.map(clan => clan.name);
+      assert.strictEqual(beforeClanNames.includes('clan 1'), false);
+      assert.strictEqual(beforeClanNames.includes('clan 2'), false);
 
+      const result = RealmService.createClans(JSON.parse(JSON.stringify(realmLevelUp)), newClans);
+      const afterClanNames = result.clans.map(clan => clan.name);
+      assert.strictEqual(afterClanNames.includes('clan 1'), true);
+      assert.strictEqual(afterClanNames.includes('clan 2'), true);      
+    });
+    it('should add only one clan with same names', () => {
+      const newClans = [
+        { name: 'clan 1' },
+        { name: 'clan 1' },
+      ];
+      const beforeClanNames = realmLevelUp.clans.map(clan => clan.name);
+      let preCounter = 0;
+      beforeClanNames.forEach(clan => {
+        if (clan === 'clan 1') {
+          preCounter++;
+        }
+      });
+      assert.strictEqual(preCounter, 0);
+
+      const result = RealmService.createClans(JSON.parse(JSON.stringify(realmLevelUp)), newClans);
+      const afterClanNames = result.clans.map(clan => clan.name);
+      let postCounter = 0;
+      afterClanNames.forEach(clan => {
+        if (clan === 'clan 1') {
+          postCounter++;
+        }
+      });
+      assert.strictEqual(postCounter, 1);
+    });
+    it('should not add clan with no names', () => {
+      const newClans = [
+        { name: 'clan 1' },
+        { name: '' },
+      ];
+      const beforeClanNames = realmLevelUp.clans.map(clan => clan.name);
+      assert.strictEqual(beforeClanNames.length, 1);
+
+      const result = RealmService.createClans(JSON.parse(JSON.stringify(realmLevelUp)), newClans);
+      const afterClanNames = result.clans.map(clan => clan.name);
+      assert.strictEqual(afterClanNames.length, 2);
+    });
+    it('object has no name property, not add clan', () => {
+      const newClans = [
+        { noName: '' }
+      ];
+      const beforeClanNames = realmLevelUp.clans.map(clan => clan.name);
+      assert.strictEqual(beforeClanNames.length, 1);
+
+      const result = RealmService.createClans(JSON.parse(JSON.stringify(realmLevelUp)), newClans);
+      const afterClanNames = result.clans.map(clan => clan.name);
+      assert.strictEqual(afterClanNames.length, 1);
+    });
+  });
+  describe('arePointsWrong tests', () => {
+    it('should return true when points are null', () => {
+      const points = null;
+      const studentIds = ['one', 'two', 'three'];
+      const result = RealmService.arePointsWrong(studentIds, points);
+      assert.strictEqual(result, true);
+    });
+    it('should return true when points are not array', () => {
+      const points = 'string';
+      const studentIds = ['one', 'two', 'three'];
+      const result = RealmService.arePointsWrong(studentIds, points);
+      assert.strictEqual(result, true);
+    });
+    it('should return true when points are empty array', () => {
+      const points = [];
+      const studentIds = ['one', 'two', 'three'];
+      const result = RealmService.arePointsWrong(studentIds, points);
+      assert.strictEqual(result, true);
+    });
+    it('should return true when points id is null', () => {
+      const points = [
+        { name: '', id: null, xp: 10, grade: 3 }
+      ];
+      const studentIds = ['one', 'two', 'three'];
+      const result = RealmService.arePointsWrong(studentIds, points);
+      assert.strictEqual(result, true);
+    });
+    it('should return true when points id not matches', () => {
+      const points = [
+        { name: '', id: 'not match', xp: 10, grade: 3 }
+      ];
+      const studentIds = ['one', 'two', 'three'];
+      const result = RealmService.arePointsWrong(studentIds, points);
+      assert.strictEqual(result, true);
+    });
+    it('should return false when all data correct', () => {
+      const points = [
+        { name: '', id: 'one', xp: 10, grade: 3 }
+      ];
+      const studentIds = ['one', 'two', 'three'];
+      const result = RealmService.arePointsWrong(studentIds, points);
+      assert.strictEqual(result, false);
+    });
+  });
+  describe('addTest tests', () => {
+    it('should return the modified XPs', () => {
+      const points = [
+        { name: '', id: '602b961f21ae205a2cdb9b63', xp: 10, grade: 3 },
+        { name: '', id: '602b961f21ae205a2cdb9b64', xp: 10, grade: 3 }
+      ];
+      const result = RealmService.addTest(JSON.parse(JSON.stringify(realmLevelUp)), points);
+      assert.strictEqual(result.students[0].lessonXp, 30);
+      assert.strictEqual(result.students[1].lessonXp, 20);
+    });
+  });
 });
