@@ -116,11 +116,18 @@ module.exports = function (app) {
     request: 
     {
       realmId: the ID of the realm,
-      lessonMana: the value of mana given after a lesson
+      lessonMana: the value of mana given after a lesson,
+      xpStep: the value of XP added default,
+      manaStep: the value of mana added default
     }
   */
-  app.post("/set-lesson-mana", jsonParser, async (req, res) => {
-    res.send(await RealmService.setLessonMana(req.body.realmId, req.body.lessonMana));
+  app.post("/set-realm-steps", jsonParser, async (req, res) => {
+    res.send(await RealmService.setRealmDefaultSteps(
+      req.body.realmId,
+      req.body.lessonMana,
+      req.body.xpStep,
+      req.body.manaStep
+    ));
   });
 
   /* 

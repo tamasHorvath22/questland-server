@@ -418,6 +418,8 @@ const createRealmToDb = async (realmName) => {
   const newRealm = Realm({
     name: realmName,
     finishLessonMana: 0,
+    xpStep: 0,
+    manaStep: 0,
     students: [],
     clans: []
   })
@@ -485,6 +487,8 @@ const resetRealmApi = async (realmId) => {
 
 const resetRealm = (realm) => {
   realm.finishLessonMana = 0;
+  realm.xpStep = 0,
+  realm.manaStep = 0,
   realm.clans = [];
   realm.students.forEach(student => {
     student[StudProp.CLASS] = null,
@@ -568,15 +572,27 @@ const addGloryPoints = async (realmId, clanId, points) => {
   return result ? result : responseMessage.DATABASE.ERROR;
 }
 
-const setLessonMana = async (realmId, lessonMana) => {
+const areStepsWrong = (lessonMana, xpStep, manaStep) => {
+  return (
+    typeof lessonMana !== 'number' ||
+    typeof xpStep !== 'number' ||
+    typeof manaStep !== 'number'
+  )
+}
+
+const setRealmDefaultSteps = async (realmId, lessonMana, xpStep, manaStep) => {
   const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  if (typeof lessonMana !== 'number') {
+  const areStepsNotOk = areStepsWrong(lessonMana, xpStep, manaStep);
+  if (areStepsNotOk) {
     return responseMessage.COMMON.INVALID_DATA;
   }
   realm.finishLessonMana = lessonMana;
+  realm.xpStep = xpStep;
+  realm.manaStep = manaStep;
+
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.DATABASE.ERROR;
 }
@@ -687,7 +703,7 @@ module.exports = {
   resetRealm: resetRealm,
   addTest: addTest,
   addGloryPoints: addGloryPoints,
-  setLessonMana: setLessonMana,
+  setRealmDefaultSteps: setRealmDefaultSteps,
   findElemById: findElemById,
   getStudentClanLevel: getStudentClanLevel,
   countModifiedValue: countModifiedValue,
@@ -707,5 +723,6 @@ module.exports = {
   checkStudentLevelUp: checkStudentLevelUp,
   checkAllStudentInClanLevelUp: checkAllStudentInClanLevelUp,
   addTestApi: addTestApi,
-  arePointsWrong: arePointsWrong
+  arePointsWrong: arePointsWrong,
+  areStepsWrong: areStepsWrong
 };
