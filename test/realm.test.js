@@ -1149,4 +1149,34 @@ describe('RealmService', () => {
       assert.strictEqual(result.students[1].lessonXp, 20);
     });
   });
+  describe('areStepsWrong tests', () => {
+    it('should return false if all value is number', () => {
+      const result = RealmService.areStepsWrong(1, 1, 1);;
+      assert.strictEqual(result, false);
+    });
+    it('should return false if one value is string', () => {
+      const result = RealmService.areStepsWrong('fg', 1, 1);;
+      assert.strictEqual(result, true);
+    });
+    it('should return false if one value is null', () => {
+      const result = RealmService.areStepsWrong(null, 1, 1);;
+      assert.strictEqual(result, true);
+    });
+    it('should return false if one value is undefined', () => {
+      const result = RealmService.areStepsWrong(1, 1, undefined);
+      assert.strictEqual(result, true);
+    });
+    it('should return false if one value is array', () => {
+      const result = RealmService.areStepsWrong([], 1, 1);;
+      assert.strictEqual(result, true);
+    });
+  });
+  it('should return false if one value is empty array', () => {
+    const result = RealmService.areStepsWrong(1, ['fg'], 1);;
+    assert.strictEqual(result, true);
+  });
+  it('should return false if one value is object', () => {
+    const result = RealmService.areStepsWrong(1, {}, 1);;
+    assert.strictEqual(result, true);
+  });
 });
