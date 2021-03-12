@@ -8,7 +8,9 @@ const realmSchema = new Schema({
   clans: { type : Array, required: true },
   finishLessonMana: { type : Number },
   xpStep: { type : Number },
-  manaStep: { type : Number }
+  manaStep: { type : Number },
+  owner: { type : String },
+  collaborators: { type : Array }
 }, { timestamps: true });
 
 module.exports = mongoose.model(schemas.REALM, realmSchema);

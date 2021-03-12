@@ -17,6 +17,7 @@ const studentSchema = new Schema({
   [StudProp.PET_FOOD]: { type : Number, required: true },
   [StudProp.CURSE_POINTS]: { type : Number, required: true },
   [StudProp.DUEL_COUNT]: { type : Number, required: true },
+  inviteUrl: { type : String, required: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model(schemas.STUDENT, studentSchema);

@@ -3,10 +3,12 @@ const RealmDoc = require('../persistence/realm.doc');
 const Realm = require('../models/realm.model');
 const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
+const RegisterToken = require('../models/register.token');
 // const ClassDoc = require('../persistence/classes.doc');
 const BackupDoc = require('../persistence/backup.doc');
 const StudProp = require('../constants/student.properties');
 const Classes = require('../constants/classes');
+const Roles = require('../constants/roles');
 const ClanTresholds = require('../constants/clan.tresholds');
 const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
@@ -374,9 +376,29 @@ const addStudentsApi = async (realmId, students) => {
   if (studentsAreInvaild) {
     return responseMessage.COMMON.INVALID_DATA;
   }
-  addStudents(realm, students);
-  const savedRealm = await RealmTransaction.saveRealm(realm);
+  const result = addStudents(realm, students);
+  const freshStudents = result.studentList;
+  const registerTokens = createInviteLinkForStudents(freshStudents, realm._id.toString());
+
+  const savedRealm = await RealmTransaction.saveRealmAndRegisterTokens(realm, registerTokens);
   return savedRealm ? savedRealm : responseMessage.DATABASE.ERROR;
+}
+
+const createInviteLinkForStudents = (freshStudents, realmId) => {
+  const registerTokens = [];
+  freshStudents.forEach(student => {
+    const regToken = 
+    RegisterToken({
+      role: Roles.STUDENT,
+      studentData: {
+        realmId: realmId,
+        studentId: student._id.toString()
+      }
+    });
+    registerTokens.push(regToken);
+    student.inviteUrl = `${process.env.UI_BASE_URL}register/${regToken._id.toString()}`
+  });
+  return registerTokens;
 }
 
 const addStudents = (realm, students) => {
@@ -411,7 +433,8 @@ const addStudents = (realm, students) => {
     }
   })
   realm.students.push(...studentList);
-  return realm;
+  // TODO refactor unit tests, return value changed from realm to studentList
+  return { realm: realm, studentList: studentList };
 }
 
 const createRealmToDb = async (realmName) => {

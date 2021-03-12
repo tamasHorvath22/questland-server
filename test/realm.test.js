@@ -813,7 +813,7 @@ describe('RealmService', () => {
         }
       ];
       const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
-      const studentList = result.students.map(student => student.name);
+      const studentList = result.realm.students.map(student => student.name);
       newCount = 0;
       otherCount = 0;
       studentList.forEach(student => {
@@ -849,7 +849,7 @@ describe('RealmService', () => {
         }
       ];
       const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
-      const studentList = result.students.map(student => student.name);
+      const studentList = result.realm.students.map(student => student.name);
       newCount = 0;
       studentList.forEach(student => {
         if (student === 'new user') {
@@ -875,7 +875,7 @@ describe('RealmService', () => {
         }
       ];
       const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
-      const studentList = result.students.map(student => student.name);
+      const studentList = result.realm.students.map(student => student.name);
       newCount = 0;
       studentList.forEach(student => {
         if (student === 'Butters') {
