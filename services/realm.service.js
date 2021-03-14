@@ -1,5 +1,6 @@
 const responseMessage = require("../constants/api-response-messages");
 const RealmDoc = require('../persistence/realm.doc');
+const GoogleUserDoc = require('../persistence/google.user.doc');
 const Realm = require('../models/realm.model');
 const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
@@ -291,12 +292,26 @@ const checkAllStudentInClanLevelUp = (realm, refStudent) => {
   return realm;
 }
 
-const getRealm = async (realmId) => {
+const getRealm = async (realmId, userId) => {
   const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  return realm;
+  const isCollaborator = isUserCollaborator(realm.collaborators, userId);
+  if (isCollaborator) {
+    return realm;
+  }
+  // TODO response on frontend
+  return responseMessage.REALM.NOT_AUTHORIZED;
+}
+
+const isUserCollaborator = (collaborators, userId) => {
+  for (const collaborator of collaborators) {
+    if (collaborator.toString() === userId.toString()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const getBackupData = async (realmId) => {
@@ -312,31 +327,42 @@ const getBackupData = async (realmId) => {
   return saveTimeList;
 }
 
-const getRealms = async () => {
+const getRealms = async (userId) => {
   const realms = await RealmDoc.getAll();
   if (realms === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const mapped = realms.map((c) => {
-    return {
-      id: c._id,
-      title: c.name
-    }
-  })
-  return mapped;
+  const userRealms = findUserRealms(realms, userId);
+  return userRealms;
 };
+
+const findUserRealms = (realms, userId) => {
+  const list = [];
+  realms.forEach(realm => {
+    for (const savedId of realm.collaborators) {
+      if (savedId.toString() === userId.toString()) {
+        list.push({
+          id: realm._id,
+          title: realm.name
+        });
+        break;
+      }
+    }
+  });
+  return list;
+}
 
 const getClasses = () => {
   return ClassesWithTresholds.classes;
 };
 
-const createRealm = async (realmName) => {
+const createRealm = async (realmName, userId) => {
   if (await SheetService.accessSpreadsheet(realmName)) {
     return responseMessage.REALM.NAME_TAKEN;
   }
-  const isSaveToDbSuccess = await createRealmToDb(realmName);
+  const isSaveToDbSuccess = await createRealmToDb(realmName, userId);
   if (isSaveToDbSuccess) {
-    return await getRealms();
+    return await getRealms(userId);
   }
   return responseMessage.REALM.CREATE_FAIL;
 }
@@ -437,12 +463,14 @@ const addStudents = (realm, students) => {
   return { realm: realm, studentList: studentList };
 }
 
-const createRealmToDb = async (realmName) => {
+const createRealmToDb = async (realmName, userId) => {
   const newRealm = Realm({
     name: realmName,
     finishLessonMana: 0,
     xpStep: 0,
     manaStep: 0,
+    owner: userId.toString(),
+    collaborators: [userId.toString()],
     students: [],
     clans: []
   })
@@ -710,6 +738,26 @@ const setModifiedStudent = (student, modifiedStudent) => {
   return student;
 }
 
+const getStudentData = async (userId) => {
+  const user = await GoogleUserDoc.getUserById(userId);
+  if (user === responseMessage.DATABASE.ERROR || user.role !== Roles.STUDENT) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const realm = await RealmDoc.getById(user.studentData.realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const student = findElemById(realm.students, user.studentData.studentId);
+  if (!student) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const studentClan = findElemById(realm.clans, student.clan)
+  student.firstName = user.firstName;
+  student.lastName = user.lastName;
+  student.clan = studentClan;
+  return student;
+}
+
 module.exports = {
   addLessonXpToSumXpApi: addLessonXpToSumXpApi,
   addLessonXpToSumXp: addLessonXpToSumXp,
@@ -747,5 +795,8 @@ module.exports = {
   checkAllStudentInClanLevelUp: checkAllStudentInClanLevelUp,
   addTestApi: addTestApi,
   arePointsWrong: arePointsWrong,
-  areStepsWrong: areStepsWrong
+  areStepsWrong: areStepsWrong,
+  isUserCollaborator: isUserCollaborator,
+  findUserRealms: findUserRealms,
+  getStudentData: getStudentData
 };

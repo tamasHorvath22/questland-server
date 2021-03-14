@@ -40,7 +40,7 @@ module.exports = function (app) {
     }
   */
   app.post("/create-realm", jsonParser, async (req, res) => {
-    res.send(await RealmService.createRealm(req.body.realmName));
+    res.send(await RealmService.createRealm(req.body.realmName, req.decoded.userId));
   });
 
   /* 
@@ -152,7 +152,7 @@ module.exports = function (app) {
   });
 
   app.get("/realms/:realmId", jsonParser, async (req, res) => {
-    res.send(await RealmService.getRealm(req.params.realmId));
+    res.send(await RealmService.getRealm(req.params.realmId, req.decoded.userId));
   });
 
   app.get("/backup/:realmId", jsonParser, async (req, res) => {
@@ -160,7 +160,11 @@ module.exports = function (app) {
   });
 
   app.get("/realms", jsonParser, async (req, res) => {
-    res.send(await RealmService.getRealms());
+    res.send(await RealmService.getRealms(req.decoded.userId));
+  });
+
+  app.get("/student-data", jsonParser, async (req, res) => {
+    res.send(await RealmService.getStudentData(req.decoded.userId));
   });
 
   app.get("/classes", jsonParser, (req, res) => {

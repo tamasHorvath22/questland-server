@@ -38,7 +38,7 @@ async function handleAuthUser(userDto) {
     });
     user = await UserTransaction.registerUserDeleteToken(newUser, savedToken);
     if (!user) {
-      responseMessage.DATABASE.ERROR;
+      return responseMessage.REGISTER.TOKEN_ERROR;
     }
   }
   const token = generateServerJwtToken(user);

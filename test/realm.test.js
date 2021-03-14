@@ -3,14 +3,18 @@ const RealmService = require('../services/realm.service');
 const MockStudents = require('./mock/students');
 const MockClans = require('./mock/clans');
 const MockRealm = require('./mock/realm');
+const MockRealms = require('./mock/realms');
 const MockRealmLevelUp = require('./mock/realm.for.level.up');
 const MockRealmLevelUp_2 = require('./mock/realm.level.up.2');
+const MockRealmCollaborators = require('./mock/realm.collaborators');
 const StudProp = require('../constants/student.properties');
 let clans;
 let students;
 let realm;
 let realmLevelUp;
 let realmLevelUp_2;
+let realmCollaborators;
+let realms;
 
 describe('RealmService', () => {
   beforeEach(() => {
@@ -19,6 +23,8 @@ describe('RealmService', () => {
     realm = MockRealm;
     realmLevelUp = MockRealmLevelUp;
     realmLevelUp_2 = MockRealmLevelUp_2;
+    realmCollaborators = MockRealmCollaborators;
+    realms = MockRealms;
   });
   describe('findElementById tests', () => {
     it('should return null if array is null', () => {
@@ -1170,13 +1176,42 @@ describe('RealmService', () => {
       const result = RealmService.areStepsWrong([], 1, 1);;
       assert.strictEqual(result, true);
     });
+    it('should return false if one value is empty array', () => {
+      const result = RealmService.areStepsWrong(1, ['fg'], 1);;
+      assert.strictEqual(result, true);
+    });
+    it('should return false if one value is object', () => {
+      const result = RealmService.areStepsWrong(1, {}, 1);;
+      assert.strictEqual(result, true);
+    });
   });
-  it('should return false if one value is empty array', () => {
-    const result = RealmService.areStepsWrong(1, ['fg'], 1);;
-    assert.strictEqual(result, true);
+  describe('isUserCollaborator tests', () => {
+    it('should return true if user is collaborator', () => {
+      const userId = '602b961f21ae205a2cdb9b62';
+      const result = RealmService.isUserCollaborator(realmCollaborators.collaborators, userId);
+      assert.strictEqual(result, true);
+    });
+    it('should return false if user is not collaborator', () => {
+      const userId = '602b961f21ae205a2cdb9b65';
+      const result = RealmService.isUserCollaborator(realmCollaborators.collaborators, userId);
+      assert.strictEqual(result, false);
+    });
   });
-  it('should return false if one value is object', () => {
-    const result = RealmService.areStepsWrong(1, {}, 1);;
-    assert.strictEqual(result, true);
+  describe('findUserRealms tests', () => {
+    it('should return one realm with correct ID', () => {
+      const userId = '602b961f21ae205a2cdb9b62';
+      const result = RealmService.findUserRealms(MockRealms, userId);
+      assert.strictEqual(result[0].id, '602b95dc21ae205a2cdb9b51');
+    });
+    it('should return no realm', () => {
+      const userId = '602b961f21ae205a2cdb9b65';
+      const result = RealmService.findUserRealms(MockRealms, userId);
+      assert.strictEqual(result.length, 0);
+    });
+    it('should return two realms', () => {
+      const userId = '602b961f21ae205a2cdb9b64';
+      const result = RealmService.findUserRealms(MockRealms, userId);
+      assert.strictEqual(result.length, 2);
+    });
   });
 });
