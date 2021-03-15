@@ -1,13 +1,11 @@
 const User = require("../models/user.model");
 const GoogleUser = require("../models/google.user.model");
-const RegisterToken = require("../models/register.token");
-const UserDoc = require("../persistence/user.doc");
+const RegisterTokenDoc = require("../persistence/register.token.doc");
 const UserTransaction = require("../persistence/user.transaction");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 const responseMessage = require("../constants/api-response-messages");
-const Roles = require("../constants/roles");
 const CryptoJS = require("crypto-js");
 
 module.exports = {
@@ -19,16 +17,13 @@ module.exports = {
 async function handleAuthUser(userDto) {
   let user = await GoogleUser.findOne({ nickname: userDto.nickname });
   if (!user) {
-    let savedToken;
-    try {
-      savedToken = await RegisterToken.findOne({ _id: userDto.token });
-    } catch (err) {
-      console.error(err);
+    let savedToken = await RegisterTokenDoc.getById(userDto.token);
+    if (savedToken === responseMessage.DATABASE.ERROR) {
+      return responseMessage.DATABASE.ERROR;
     }
     if (!savedToken) {
       return responseMessage.REGISTER.TOKEN_ERROR;
     }
-    
     const newUser = GoogleUser({
       nickname: userDto.nickname,
       firstName: userDto.firstName,
@@ -46,14 +41,16 @@ async function handleAuthUser(userDto) {
 }
 
 function generateServerJwtToken(user) {
+  const realmId = user.studentData ? user.studentData.realmId : null;
+  const studentId = user.studentData ? user.studentData.studentId : null;
   return jwt.sign({
     userId: user._id,
     nickname: user.nickname,
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
-    realmId: user.studentData.realmId,
-    studentId: user.studentData.studentId
+    realmId: realmId,
+    studentId: studentId
   },
   config.getJwtPrivateKey());
 }

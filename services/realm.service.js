@@ -7,6 +7,7 @@ const Student = require('../models/student.model');
 const RegisterToken = require('../models/register.token');
 // const ClassDoc = require('../persistence/classes.doc');
 const BackupDoc = require('../persistence/backup.doc');
+const RegisterTokenDoc = require('../persistence/register.token.doc');
 const StudProp = require('../constants/student.properties');
 const Classes = require('../constants/classes');
 const Roles = require('../constants/roles');
@@ -413,9 +414,9 @@ const addStudentsApi = async (realmId, students) => {
 const createInviteLinkForStudents = (freshStudents, realmId) => {
   const registerTokens = [];
   freshStudents.forEach(student => {
-    const regToken = 
-    RegisterToken({
+    const regToken = RegisterToken({
       role: Roles.STUDENT,
+      expiresAt: null,
       studentData: {
         realmId: realmId,
         studentId: student._id.toString()
@@ -758,6 +759,41 @@ const getStudentData = async (userId) => {
   return student;
 }
 
+const createTeacherInvite = async () => {
+  const teackerTokens = await RegisterTokenDoc.getByRole(Roles.TEACHER);
+  console.log(teackerTokens)
+  if (teackerTokens === responseMessage.DATABASE.ERROR) {
+    responseMessage.DATABASE.ERROR;
+  }
+  // finds and deletes all expired tokens
+  const deadTokens = [];
+  const now = new Date().getTime();
+  teackerTokens.forEach(token => {
+    if (token.expiresAt < now) {
+      deadTokens.push(token);
+    }
+  });
+  if (deadTokens.length) {
+    await RegisterTokenDoc.removeTokens(deadTokens);
+  }
+  const teacherToken = createInviteLinkForTeacher();
+  const result = await RegisterTokenDoc.saveToken(teacherToken);
+  if (result) {
+    return `${process.env.UI_BASE_URL}register/${teacherToken._id.toString()}`
+  }
+  return responseMessage.DATABASE.ERROR;
+}
+
+const createInviteLinkForTeacher = () => {
+  const expires = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
+  const regToken = RegisterToken({
+    role: Roles.TEACHER,
+    expiresAt: expires,
+    studentData: null
+  });
+  return regToken;
+}
+
 module.exports = {
   addLessonXpToSumXpApi: addLessonXpToSumXpApi,
   addLessonXpToSumXp: addLessonXpToSumXp,
@@ -798,5 +834,6 @@ module.exports = {
   areStepsWrong: areStepsWrong,
   isUserCollaborator: isUserCollaborator,
   findUserRealms: findUserRealms,
-  getStudentData: getStudentData
+  getStudentData: getStudentData,
+  createTeacherInvite: createTeacherInvite
 };

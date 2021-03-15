@@ -163,6 +163,10 @@ module.exports = function (app) {
     res.send(await RealmService.getRealms(req.decoded.userId));
   });
 
+  app.get("/create-teacher-invite", jsonParser, async (req, res) => {
+    res.send(await RealmService.createTeacherInvite());
+  });
+
   app.get("/student-data", jsonParser, async (req, res) => {
     res.send(await RealmService.getStudentData(req.decoded.userId));
   });
