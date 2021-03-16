@@ -760,7 +760,6 @@ const getStudentData = async (userId) => {
 
 const createTeacherInvite = async () => {
   const teackerTokens = await RegisterTokenDoc.getByRole(Roles.TEACHER);
-  console.log(teackerTokens)
   if (teackerTokens === responseMessage.DATABASE.ERROR) {
     responseMessage.DATABASE.ERROR;
   }

@@ -1,12 +1,15 @@
 const User = require("../models/user.model");
 const GoogleUser = require("../models/google.user.model");
 const RegisterTokenDoc = require("../persistence/register.token.doc");
+const RealmDoc = require("../persistence/realm.doc");
 const UserTransaction = require("../persistence/user.transaction");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
 const responseMessage = require("../constants/api-response-messages");
+const Roles = require("../constants/roles");
 const CryptoJS = require("crypto-js");
+const mongoose = require('mongoose');
 
 module.exports = {
   login: login,
@@ -31,7 +34,16 @@ async function handleAuthUser(userDto) {
       role: savedToken.role,
       studentData: savedToken.studentData
     });
-    user = await UserTransaction.registerUserDeleteToken(newUser, savedToken);
+    let realm;
+    if (savedToken.role === Roles.STUDENT) {
+      realm = await RealmDoc.getById(mongoose.Types.ObjectId(savedToken.studentData.realmId));
+      if (!realm || realm === responseMessage.DATABASE.ERROR) {
+        return responseMessage.DATABASE.ERROR;
+      }
+      const student = realm.students.find(s => s._id.toString() === savedToken.studentData.studentId.toString());
+      student.inviteUrl = null;
+    }
+    user = await UserTransaction.registerUserDeleteToken(newUser, savedToken, realm);
     if (!user) {
       return responseMessage.REGISTER.TOKEN_ERROR;
     }
