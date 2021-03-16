@@ -167,6 +167,38 @@ module.exports = function (app) {
     res.send(await RealmService.createTeacherInvite());
   });
 
+  /* 
+    request: 
+    { 
+      realmId: the id of the realm
+    }
+  */
+  app.post("/get-possible-collaborators", jsonParser, async (req, res) => {
+    res.send(await RealmService.getPossibleCollaboratorsApi(req.body.realmId, req.decoded.userId));
+  });
+
+  /* 
+    request: 
+    { 
+      realmId: the id of the realm
+    }
+  */
+  app.post("/get-collaborators", jsonParser, async (req, res) => {
+    res.send(await RealmService.getCollaboratorsApi(req.body.realmId, req.decoded.userId));
+  });
+
+  /* 
+    request: 
+    { 
+      realmId: the id of the realm
+      collaborators: user IDs to add or remove
+      isAdd: true if add, false if remove
+    }
+  */
+  app.post("/save-collaborators", jsonParser, async (req, res) => {
+    res.send(await RealmService.saveCollaboratorsApi(req.decoded.userId, req.body));
+  });
+
   app.get("/student-data", jsonParser, async (req, res) => {
     res.send(await RealmService.getStudentData(req.decoded.userId));
   });

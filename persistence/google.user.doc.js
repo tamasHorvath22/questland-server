@@ -1,12 +1,7 @@
 const GoogleUser = require('../models/google.user.model');
 const responseMessage = require('../constants/api-response-messages');
 
-module.exports = {
-  getUserById: getUserById
-  // getUserByUsername: getUserByUsername,
-}
-
-async function getUserById(id) {
+const getUserById = async (id) => {
   try {
     return await GoogleUser.findById(id).exec();
   } catch(err) {
@@ -15,11 +10,17 @@ async function getUserById(id) {
   }
 }
 
-// async function getUserByUsername(username) {
-//   try {
-//     return await User.findOne({ username: username }).exec();
-//   } catch(err) {
-//     console.error(err);
-//     return responseMessage.DATABASE.ERROR;
-//   }
-// }
+const getByRole = async (role) => {
+  try {
+    return await GoogleUser.find({ role: role }).exec();
+  } catch(err) {
+    console.error(err);
+    return responseMessage.DATABASE.ERROR;
+  }
+}
+
+module.exports = {
+  getUserById: getUserById,
+  getByRole: getByRole
+  // getUserByUsername: getUserByUsername,
+}

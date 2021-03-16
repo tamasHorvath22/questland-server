@@ -21,7 +21,7 @@ const Transaction = require('mongoose-transactions');
   }
 }
 
- const getByRole = async (role) => {
+const getByRole = async (role) => {
   try {
     return await RegisterRoken.find({ role: role }).exec();
   } catch(err) {

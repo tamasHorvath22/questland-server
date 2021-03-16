@@ -26,8 +26,8 @@ async function handleAuthUser(userDto) {
     }
     const newUser = GoogleUser({
       nickname: userDto.nickname,
-      firstName: userDto.firstName,
-      lastName: userDto.lastName,
+      firstname: userDto.firstname,
+      lastname: userDto.lastname,
       role: savedToken.role,
       studentData: savedToken.studentData
     });

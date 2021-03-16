@@ -460,7 +460,6 @@ const addStudents = (realm, students) => {
     }
   })
   realm.students.push(...studentList);
-  // TODO refactor unit tests, return value changed from realm to studentList
   return { realm: realm, studentList: studentList };
 }
 
@@ -794,6 +793,104 @@ const createInviteLinkForTeacher = () => {
   return regToken;
 }
 
+const getPossibleCollaboratorsApi = async (realmId, userId) => {
+  const users = await GoogleUserDoc.getByRole(Roles.TEACHER);
+  const realm = await RealmDoc.getById(realmId);
+  if (users === responseMessage.DATABASE.ERROR || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (realm.owner.toString() !== userId.toString()) {
+    // TODO find correct response
+    return responseMessage.DATABASE.ERROR;
+  }
+  const currentCollaborators = realm.collaborators.map(c => c.toString());
+  const collaborators = getPossibleCollaborators(users, currentCollaborators);
+  return collaborators;
+}
+
+const getPossibleCollaborators = (users, currentCollaborators) => {
+  const collaborators = users.map(user => {
+    return {
+      firstname: user.firstname,
+      lastname: user.lastname,
+      nickname: user.nickname,
+      id: user._id.toString()
+    }
+  }).filter((user => !currentCollaborators.includes(user.id)));
+  return collaborators;
+}
+
+const saveCollaboratorsApi = async (userId, data) => {
+  const realm = await RealmDoc.getById(data.realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (realm.owner.toString() !== userId.toString()) {
+    // TODO response on frontend
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (data.isAdd) {
+    data.collaborators.forEach(async (collaborator) => {
+      const user = await GoogleUserDoc.getUserById(collaborator);
+      if (user && user !== responseMessage.DATABASE.ERROR && user.role === Roles.TEACHER) {
+        for (const savedCollaborator of realm.collaborators) {
+          // if the user is alreasy added to collaborators, won't be added again
+          if (savedCollaborator.toString() === collaborator.toString()) {
+            return;
+          }
+        }
+        realm.collaborators.push(user._id);
+      }
+    });
+  } else {
+    saveCollaborators(realm, data.isAdd, data.collaborators);
+  }
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const saveCollaborators = (realm, isAdd, collaborators) => {
+  // TODO unit tests
+  if (isAdd) {
+    realm.collaborators.push(...collaborators);
+  } else {
+    collaborators.forEach(coll => {
+      for (let i = 0; i < realm.collaborators.length; i++) {
+        const savedColl = realm.collaborators[i];
+        if (savedColl.toString() === coll.toString()) {
+          realm.collaborators.splice(i, 1);
+          return;
+        }
+      }
+    });
+  }
+  return realm;
+}
+
+const getCollaboratorsApi = async (realmId, userId) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (realm.owner.toString() !== userId.toString()) {
+    // TODO response on frontend
+    return responseMessage.REALM.NOT_AUTHORIZED;
+  }
+  const collaboratorsData = [];
+  for (const coll of realm.collaborators) {
+    const user = await GoogleUserDoc.getUserById(coll);
+    if (user._id.toString() !== userId.toString()) {
+      collaboratorsData.push({
+        firstname: user.firstname,
+        lastname: user.lastname,
+        nickname: user.nickname,
+        id: user._id
+      });
+    }
+  }
+  return collaboratorsData;
+}
+
 module.exports = {
   addLessonXpToSumXpApi: addLessonXpToSumXpApi,
   addLessonXpToSumXp: addLessonXpToSumXp,
@@ -835,5 +932,10 @@ module.exports = {
   isUserCollaborator: isUserCollaborator,
   findUserRealms: findUserRealms,
   getStudentData: getStudentData,
-  createTeacherInvite: createTeacherInvite
+  createTeacherInvite: createTeacherInvite,
+  getPossibleCollaborators: getPossibleCollaborators,
+  getPossibleCollaboratorsApi: getPossibleCollaboratorsApi,
+  saveCollaboratorsApi: saveCollaboratorsApi,
+  saveCollaborators: saveCollaborators,
+  getCollaboratorsApi: getCollaboratorsApi
 };

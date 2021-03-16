@@ -4,8 +4,8 @@ const Schema = mongoose.Schema;
 
 let googleUserSchema = new Schema({
   nickname: { type : String },
-  firstName: { type : String },
-  lastName: { type : String },
+  firstname: { type : String },
+  lastname: { type : String },
   role: { type : String },
   studentData: { type : Object }
 }, { timestamps: true });

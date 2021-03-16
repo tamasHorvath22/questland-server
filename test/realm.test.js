@@ -7,6 +7,7 @@ const MockRealms = require('./mock/realms');
 const MockRealmLevelUp = require('./mock/realm.for.level.up');
 const MockRealmLevelUp_2 = require('./mock/realm.level.up.2');
 const MockRealmCollaborators = require('./mock/realm.collaborators');
+const GoogleUsers = require('./mock/google.users');
 const StudProp = require('../constants/student.properties');
 let clans;
 let students;
@@ -14,7 +15,7 @@ let realm;
 let realmLevelUp;
 let realmLevelUp_2;
 let realmCollaborators;
-let realms;
+let googleUsers;
 
 describe('RealmService', () => {
   beforeEach(() => {
@@ -24,7 +25,7 @@ describe('RealmService', () => {
     realmLevelUp = MockRealmLevelUp;
     realmLevelUp_2 = MockRealmLevelUp_2;
     realmCollaborators = MockRealmCollaborators;
-    realms = MockRealms;
+    googleUsers = GoogleUsers;
   });
   describe('findElementById tests', () => {
     it('should return null if array is null', () => {
@@ -1212,6 +1213,52 @@ describe('RealmService', () => {
       const userId = '602b961f21ae205a2cdb9b64';
       const result = RealmService.findUserRealms(MockRealms, userId);
       assert.strictEqual(result.length, 2);
+    });
+  });
+  describe('getPossibleCollaborators tests', () => {
+    it('should return 2 possible collaborators', () => {
+      const currentCollaborators = ['11111111'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      assert.strictEqual(result.length, 2);
+    });
+    it('should not contain the current collaborators (1 coll)', () => {
+      const currentCollaborators = ['11111111'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      currentCounter = 0;
+      for (const elem of result) {
+        if (elem.id.toString() === currentCollaborators[0]) {
+          currentCounter++;
+        }
+      }
+      assert.strictEqual(currentCounter, 0);
+    });
+    it('should return 1 possible collaborators', () => {
+      const currentCollaborators = ['11111111', '22222222'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      assert.strictEqual(result.length, 1);
+    });
+    it('should not contain the current collaborators (2 coll)', () => {
+      const currentCollaborators = ['11111111', '22222222'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      currentCounter = 0;
+      for (const elem of result) {
+        if (elem.id === currentCollaborators[0] || elem.id === currentCollaborators[1]) {
+          currentCounter++;
+        }
+      }
+      assert.strictEqual(currentCounter, 0);
+    });
+  });
+  describe('saveCollaborators tests', () => {
+    it('should return 4 as number of collaborators when add', () => {
+      const collaborators = ['602b961f21ae205a2cdb9b67', '602b961f21ae205a2cdb9b68'];
+      const result = RealmService.saveCollaborators(JSON.parse(JSON.stringify(realmCollaborators)), true, collaborators);
+      assert.strictEqual(result.collaborators.length, 4);
+    });
+    it('should return 1 as number of collaborators when remove', () => {
+      const collaborators = ['602b961f21ae205a2cdb9b62'];
+      const result = RealmService.saveCollaborators(JSON.parse(JSON.stringify(realmCollaborators)), false, collaborators);
+      assert.strictEqual(result.collaborators.length, 1);
     });
   });
 });
