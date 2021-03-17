@@ -30,7 +30,8 @@ const accessSpreadsheet = async (realmName) => {
 };
 
 const isAuthorized = (realm, userId) => {
-  return realm.owner.toString() === userId.toString();
+  const collaborators = realm.collaborators.map(c => c.toString());
+  return collaborators.includes(userId.toString());
 }
 
 const syncBackup = async (realmId, time, userId) => {

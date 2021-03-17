@@ -21,7 +21,8 @@ const mongoose = require('mongoose');
 
 
 const isAuthorized = (realm, userId) => {
-  return realm.owner.toString() === userId.toString();
+  const collaborators = realm.collaborators.map(c => c.toString());
+  return collaborators.includes(userId.toString());
 }
 
 const addValueApi = async (data, userId) => {
