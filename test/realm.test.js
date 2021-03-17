@@ -3,14 +3,19 @@ const RealmService = require('../services/realm.service');
 const MockStudents = require('./mock/students');
 const MockClans = require('./mock/clans');
 const MockRealm = require('./mock/realm');
+const MockRealms = require('./mock/realms');
 const MockRealmLevelUp = require('./mock/realm.for.level.up');
 const MockRealmLevelUp_2 = require('./mock/realm.level.up.2');
+const MockRealmCollaborators = require('./mock/realm.collaborators');
+const GoogleUsers = require('./mock/google.users');
 const StudProp = require('../constants/student.properties');
 let clans;
 let students;
 let realm;
 let realmLevelUp;
 let realmLevelUp_2;
+let realmCollaborators;
+let googleUsers;
 
 describe('RealmService', () => {
   beforeEach(() => {
@@ -19,6 +24,8 @@ describe('RealmService', () => {
     realm = MockRealm;
     realmLevelUp = MockRealmLevelUp;
     realmLevelUp_2 = MockRealmLevelUp_2;
+    realmCollaborators = MockRealmCollaborators;
+    googleUsers = GoogleUsers;
   });
   describe('findElementById tests', () => {
     it('should return null if array is null', () => {
@@ -813,7 +820,7 @@ describe('RealmService', () => {
         }
       ];
       const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
-      const studentList = result.students.map(student => student.name);
+      const studentList = result.realm.students.map(student => student.name);
       newCount = 0;
       otherCount = 0;
       studentList.forEach(student => {
@@ -849,7 +856,7 @@ describe('RealmService', () => {
         }
       ];
       const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
-      const studentList = result.students.map(student => student.name);
+      const studentList = result.realm.students.map(student => student.name);
       newCount = 0;
       studentList.forEach(student => {
         if (student === 'new user') {
@@ -875,7 +882,7 @@ describe('RealmService', () => {
         }
       ];
       const result = RealmService.addStudents(JSON.parse(JSON.stringify(realm)), students);
-      const studentList = result.students.map(student => student.name);
+      const studentList = result.realm.students.map(student => student.name);
       newCount = 0;
       studentList.forEach(student => {
         if (student === 'Butters') {
@@ -1170,13 +1177,88 @@ describe('RealmService', () => {
       const result = RealmService.areStepsWrong([], 1, 1);;
       assert.strictEqual(result, true);
     });
+    it('should return false if one value is empty array', () => {
+      const result = RealmService.areStepsWrong(1, ['fg'], 1);;
+      assert.strictEqual(result, true);
+    });
+    it('should return false if one value is object', () => {
+      const result = RealmService.areStepsWrong(1, {}, 1);;
+      assert.strictEqual(result, true);
+    });
   });
-  it('should return false if one value is empty array', () => {
-    const result = RealmService.areStepsWrong(1, ['fg'], 1);;
-    assert.strictEqual(result, true);
+  describe('isUserCollaborator tests', () => {
+    it('should return true if user is collaborator', () => {
+      const userId = '602b961f21ae205a2cdb9b62';
+      const result = RealmService.isUserCollaborator(realmCollaborators.collaborators, userId);
+      assert.strictEqual(result, true);
+    });
+    it('should return false if user is not collaborator', () => {
+      const userId = '602b961f21ae205a2cdb9b65';
+      const result = RealmService.isUserCollaborator(realmCollaborators.collaborators, userId);
+      assert.strictEqual(result, false);
+    });
   });
-  it('should return false if one value is object', () => {
-    const result = RealmService.areStepsWrong(1, {}, 1);;
-    assert.strictEqual(result, true);
+  describe('findUserRealms tests', () => {
+    it('should return one realm with correct ID', () => {
+      const userId = '602b961f21ae205a2cdb9b62';
+      const result = RealmService.findUserRealms(MockRealms, userId);
+      assert.strictEqual(result[0].id, '602b95dc21ae205a2cdb9b51');
+    });
+    it('should return no realm', () => {
+      const userId = '602b961f21ae205a2cdb9b65';
+      const result = RealmService.findUserRealms(MockRealms, userId);
+      assert.strictEqual(result.length, 0);
+    });
+    it('should return two realms', () => {
+      const userId = '602b961f21ae205a2cdb9b64';
+      const result = RealmService.findUserRealms(MockRealms, userId);
+      assert.strictEqual(result.length, 2);
+    });
+  });
+  describe('getPossibleCollaborators tests', () => {
+    it('should return 2 possible collaborators', () => {
+      const currentCollaborators = ['11111111'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      assert.strictEqual(result.length, 2);
+    });
+    it('should not contain the current collaborators (1 coll)', () => {
+      const currentCollaborators = ['11111111'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      currentCounter = 0;
+      for (const elem of result) {
+        if (elem.id.toString() === currentCollaborators[0]) {
+          currentCounter++;
+        }
+      }
+      assert.strictEqual(currentCounter, 0);
+    });
+    it('should return 1 possible collaborators', () => {
+      const currentCollaborators = ['11111111', '22222222'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      assert.strictEqual(result.length, 1);
+    });
+    it('should not contain the current collaborators (2 coll)', () => {
+      const currentCollaborators = ['11111111', '22222222'];
+      const result = RealmService.getPossibleCollaborators(googleUsers, currentCollaborators);
+      currentCounter = 0;
+      for (const elem of result) {
+        if (elem.id === currentCollaborators[0] || elem.id === currentCollaborators[1]) {
+          currentCounter++;
+        }
+      }
+      assert.strictEqual(currentCounter, 0);
+    });
+  });
+  describe('saveCollaborators tests', () => {
+    it('should return 4 as number of collaborators when add', () => {
+      const collaborators = ['602b961f21ae205a2cdb9b67', '602b961f21ae205a2cdb9b68'];
+      const result = RealmService.saveCollaborators(JSON.parse(JSON.stringify(realmCollaborators)), true, collaborators);
+      assert.strictEqual(result.collaborators.length, 4);
+    });
+    it('should return 1 as number of collaborators when remove', () => {
+      const collaborators = ['602b961f21ae205a2cdb9b62'];
+      const result = RealmService.saveCollaborators(JSON.parse(JSON.stringify(realmCollaborators)), false, collaborators);
+      assert.strictEqual(result.collaborators.length, 1);
+    });
   });
 });

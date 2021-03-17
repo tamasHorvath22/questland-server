@@ -6,6 +6,7 @@ const CommonKeys = require('../constants/sheet.student.keys');
 const SheetHeaders = require('../constants/sheet.headers');
 const BackupDoc = require('../persistence/backup.doc');
 const _ = require('underscore');
+const RealmDoc = require('../persistence/realm.doc');
 // const sleep = require('util').promisify(setTimeout);
 
 const loadSpreadsheet = async () => {
@@ -28,9 +29,17 @@ const accessSpreadsheet = async (realmName) => {
   return doc.sheetsByTitle[realmName];
 };
 
-const syncBackup = async (realmId, time) => {
+const isAuthorized = (realm, userId) => {
+  return realm.owner.toString() === userId.toString();
+}
+
+const syncBackup = async (realmId, time, userId) => {
+  const realm = await RealmDoc.getById(realmId);
   const backup = await BackupDoc.getBackup();
-  if (backup === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR || backup === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const realmBackups = backup.realms[realmId.toString()];

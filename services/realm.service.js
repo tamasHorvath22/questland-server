@@ -1,30 +1,42 @@
 const responseMessage = require("../constants/api-response-messages");
 const RealmDoc = require('../persistence/realm.doc');
+const GoogleUserDoc = require('../persistence/google.user.doc');
 const Realm = require('../models/realm.model');
 const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
+const RegisterToken = require('../models/register.token');
 // const ClassDoc = require('../persistence/classes.doc');
 const BackupDoc = require('../persistence/backup.doc');
+const RegisterTokenDoc = require('../persistence/register.token.doc');
 const StudProp = require('../constants/student.properties');
 const Classes = require('../constants/classes');
+const Roles = require('../constants/roles');
 const ClanTresholds = require('../constants/clan.tresholds');
 const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
 const Backup = require('../models/backup.model');
 const validIncomingPointTypes = require('../constants/valid.incoming.point.types');
 const ClassesWithTresholds = require('../constants/classes.with.tresholds');
+const mongoose = require('mongoose');
 
 
-const addValueApi = async (data) => {
+const isAuthorized = (realm, userId) => {
+  return realm.owner.toString() === userId.toString();
+}
+
+const addValueApi = async (data, userId) => {
   // Typecheck of input data. If pointType, value, isDuel or isWinner not from expected type, the function returns
   const areTypesWrong = areAddValueTypesWrong(data);
   if (areTypesWrong) {
     return responseMessage.COMMON.INVALID_DATA;
   }
   const realm = await RealmDoc.getById(data.realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
     // if no realm found, the function returns with database error.
     // the reason of no realm can be invalid realmId also
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const student = findElemById(realm.students, data.studentId);
@@ -145,13 +157,16 @@ const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel
   return parseFloat(newValue.toFixed(2));
 }
 
-const addValueToAllApi = async (data) => {
+const addValueToAllApi = async (data, userId) => {
   const areInputWrong = areAddToAllValuesWrong(data);
   if (areInputWrong) {
     return responseMessage.COMMON.INVALID_DATA;
   }
   const realm = await RealmDoc.getById(data.realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const modifiedRealm = addValueToAll(realm, data);
@@ -194,14 +209,19 @@ const getStudentClanLevel = (studentClan, clans) => {
   return clanLevel;
 }
 
-const addLessonXpToSumXpApi = async (realmId) => {
+const addLessonXpToSumXpApi = async (realmId, userId) => {
   const realm = await RealmDoc.getById(realmId);
   const backup = await BackupDoc.getBackup();
   
   if (
+    !realm || 
     realm === responseMessage.DATABASE.ERROR ||
+    !backup ||
     backup === responseMessage.DATABASE.ERROR
   ) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
 
@@ -289,17 +309,35 @@ const checkAllStudentInClanLevelUp = (realm, refStudent) => {
   return realm;
 }
 
-const getRealm = async (realmId) => {
+const getRealm = async (realmId, userId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  return realm;
+  const isCollaborator = isUserCollaborator(realm.collaborators, userId);
+  if (isCollaborator) {
+    return realm;
+  }
+  // TODO response on frontend
+  return responseMessage.REALM.NOT_AUTHORIZED;
 }
 
-const getBackupData = async (realmId) => {
+const isUserCollaborator = (collaborators, userId) => {
+  for (const collaborator of collaborators) {
+    if (collaborator.toString() === userId.toString()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const getBackupData = async (realmId, userId) => {
   const backup = await BackupDoc.getBackup();
-  if (backup === responseMessage.DATABASE.ERROR) {
+  const realm = await RealmDoc.getById(realmId);
+  if (!backup || backup === responseMessage.DATABASE.ERROR || !realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   let saveTimeList = [];
@@ -310,31 +348,42 @@ const getBackupData = async (realmId) => {
   return saveTimeList;
 }
 
-const getRealms = async () => {
+const getRealms = async (userId) => {
   const realms = await RealmDoc.getAll();
-  if (realms === responseMessage.DATABASE.ERROR) {
+  if (!realms || realms === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const mapped = realms.map((c) => {
-    return {
-      id: c._id,
-      title: c.name
-    }
-  })
-  return mapped;
+  const userRealms = findUserRealms(realms, userId);
+  return userRealms;
 };
+
+const findUserRealms = (realms, userId) => {
+  const list = [];
+  realms.forEach(realm => {
+    for (const savedId of realm.collaborators) {
+      if (savedId.toString() === userId.toString()) {
+        list.push({
+          id: realm._id,
+          title: realm.name
+        });
+        break;
+      }
+    }
+  });
+  return list;
+}
 
 const getClasses = () => {
   return ClassesWithTresholds.classes;
 };
 
-const createRealm = async (realmName) => {
+const createRealm = async (realmName, userId) => {
   if (await SheetService.accessSpreadsheet(realmName)) {
     return responseMessage.REALM.NAME_TAKEN;
   }
-  const isSaveToDbSuccess = await createRealmToDb(realmName);
+  const isSaveToDbSuccess = await createRealmToDb(realmName, userId);
   if (isSaveToDbSuccess) {
-    return await getRealms();
+    return await getRealms(userId);
   }
   return responseMessage.REALM.CREATE_FAIL;
 }
@@ -365,18 +414,41 @@ const getRealmStudentList = (students) => {
   })
 }
 
-const addStudentsApi = async (realmId, students) => {
+const addStudentsApi = async (realmId, students, userId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const studentsAreInvaild = areStudentsWrong(realm, students);
   if (studentsAreInvaild) {
     return responseMessage.COMMON.INVALID_DATA;
   }
-  addStudents(realm, students);
-  const savedRealm = await RealmTransaction.saveRealm(realm);
+  const result = addStudents(realm, students);
+  const freshStudents = result.studentList;
+  const registerTokens = createInviteLinkForStudents(freshStudents, realm._id.toString());
+
+  const savedRealm = await RealmTransaction.saveRealmAndRegisterTokens(realm, registerTokens);
   return savedRealm ? savedRealm : responseMessage.DATABASE.ERROR;
+}
+
+const createInviteLinkForStudents = (freshStudents, realmId) => {
+  const registerTokens = [];
+  freshStudents.forEach(student => {
+    const regToken = RegisterToken({
+      role: Roles.STUDENT,
+      expiresAt: null,
+      studentData: {
+        realmId: realmId,
+        studentId: student._id.toString()
+      }
+    });
+    registerTokens.push(regToken);
+    student.inviteUrl = `${process.env.UI_BASE_URL}register/${regToken._id.toString()}`
+  });
+  return registerTokens;
 }
 
 const addStudents = (realm, students) => {
@@ -411,15 +483,17 @@ const addStudents = (realm, students) => {
     }
   })
   realm.students.push(...studentList);
-  return realm;
+  return { realm: realm, studentList: studentList };
 }
 
-const createRealmToDb = async (realmName) => {
+const createRealmToDb = async (realmName, userId) => {
   const newRealm = Realm({
     name: realmName,
     finishLessonMana: 0,
     xpStep: 0,
     manaStep: 0,
+    owner: userId.toString(),
+    collaborators: [userId.toString()],
     students: [],
     clans: []
   })
@@ -432,9 +506,12 @@ const createRealmToDb = async (realmName) => {
   }
 }
 
-const createClansApi = async (realmId, newClans) => {
+const createClansApi = async (realmId, newClans, userId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   if (!Array.isArray(newClans)) {
@@ -468,10 +545,13 @@ const createClans = (realm, newClans) => {
   return realm;
 }
 
-const resetRealmApi = async (realmId) => {
+const resetRealmApi = async (realmId, userId) => {
   const realm = await RealmDoc.getById(realmId);
   const backup = await BackupDoc.getBackup();
-  if (realm === responseMessage.DATABASE.ERROR || backup === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR || !backup || backup === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   resetRealm(realm);
@@ -507,9 +587,12 @@ const resetRealm = (realm) => {
   return realm;
 }
 
-const addTestApi = async (realmId, points) => {
+const addTestApi = async (realmId, points, userId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const studentIds = getStudentIds(realm.students);
@@ -558,9 +641,12 @@ const addTest = (realm, points) => {
   return realm;
 }
 
-const addGloryPoints = async (realmId, clanId, points) => {
+const addGloryPoints = async (realmId, clanId, points, userId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const studentClan = findElemById(realm.clans, clanId);
@@ -580,9 +666,12 @@ const areStepsWrong = (lessonMana, xpStep, manaStep) => {
   )
 }
 
-const setRealmDefaultSteps = async (realmId, lessonMana, xpStep, manaStep) => {
+const setRealmDefaultSteps = async (realmId, lessonMana, xpStep, manaStep, userId) => {
   const realm = await RealmDoc.getById(realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const areStepsNotOk = areStepsWrong(lessonMana, xpStep, manaStep);
@@ -597,9 +686,12 @@ const setRealmDefaultSteps = async (realmId, lessonMana, xpStep, manaStep) => {
   return result ? result : responseMessage.DATABASE.ERROR;
 }
 
-const saveModifiedStudentApi = async (modifiedStudent) => {
-  const realm = await RealmDoc.getById(modifiedStudent.realmId);
-  if (realm === responseMessage.DATABASE.ERROR) {
+const saveModifiedStudentApi = async (modifiedStudent, userId) => {
+  const realm = await RealmDoc.getById(mongoose.Types.ObjectId(modifiedStudent.realmId));
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
     return responseMessage.DATABASE.ERROR;
   }
   const student = findElemById(realm.students, modifiedStudent._id);
@@ -687,6 +779,155 @@ const setModifiedStudent = (student, modifiedStudent) => {
   return student;
 }
 
+const getStudentData = async (userId) => {
+  const user = await GoogleUserDoc.getUserById(userId);
+  if (!user || user === responseMessage.DATABASE.ERROR || user.role !== Roles.STUDENT) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const realm = await RealmDoc.getById(user.studentData.realmId);
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const student = findElemById(realm.students, user.studentData.studentId);
+  if (!student) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const studentClan = findElemById(realm.clans, student.clan)
+  student.firstName = user.firstName;
+  student.lastName = user.lastName;
+  student.clan = studentClan;
+  return student;
+}
+
+const createTeacherInvite = async () => {
+  const teackerTokens = await RegisterTokenDoc.getByRole(Roles.TEACHER);
+  if (!teackerTokens || teackerTokens === responseMessage.DATABASE.ERROR) {
+    responseMessage.DATABASE.ERROR;
+  }
+  // finds and deletes all expired tokens
+  const deadTokens = [];
+  const now = new Date().getTime();
+  teackerTokens.forEach(token => {
+    if (token.expiresAt < now) {
+      deadTokens.push(token);
+    }
+  });
+  if (deadTokens.length) {
+    await RegisterTokenDoc.removeTokens(deadTokens);
+  }
+  const teacherToken = createInviteLinkForTeacher();
+  const result = await RegisterTokenDoc.saveToken(teacherToken);
+  if (result) {
+    return `${process.env.UI_BASE_URL}register/${teacherToken._id.toString()}`
+  }
+  return responseMessage.DATABASE.ERROR;
+}
+
+const createInviteLinkForTeacher = () => {
+  const expires = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
+  const regToken = RegisterToken({
+    role: Roles.TEACHER,
+    expiresAt: expires,
+    studentData: null
+  });
+  return regToken;
+}
+
+const getPossibleCollaboratorsApi = async (realmId, userId) => {
+  const users = await GoogleUserDoc.getByRole(Roles.TEACHER);
+  const realm = await RealmDoc.getById(realmId);
+  if (!users || users === responseMessage.DATABASE.ERROR || !realm ||  realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const currentCollaborators = realm.collaborators.map(c => c.toString());
+  const collaborators = getPossibleCollaborators(users, currentCollaborators);
+  return collaborators;
+}
+
+const getPossibleCollaborators = (users, currentCollaborators) => {
+  const collaborators = users.map(user => {
+    return {
+      firstname: user.firstname,
+      lastname: user.lastname,
+      nickname: user.nickname,
+      id: user._id.toString()
+    }
+  }).filter((user => !currentCollaborators.includes(user.id)));
+  return collaborators;
+}
+
+const saveCollaboratorsApi = async (userId, data) => {
+  const realm = await RealmDoc.getById(data.realmId);
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (data.isAdd) {
+    data.collaborators.forEach(async (collaborator) => {
+      const user = await GoogleUserDoc.getUserById(collaborator);
+      if (user && user !== responseMessage.DATABASE.ERROR && user.role === Roles.TEACHER) {
+        for (const savedCollaborator of realm.collaborators) {
+          // if the user is alreasy added to collaborators, won't be added again
+          if (savedCollaborator.toString() === collaborator.toString()) {
+            return;
+          }
+        }
+        realm.collaborators.push(user._id);
+      }
+    });
+  } else {
+    saveCollaborators(realm, data.isAdd, data.collaborators);
+  }
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const saveCollaborators = (realm, isAdd, collaborators) => {
+  // TODO unit tests
+  if (isAdd) {
+    realm.collaborators.push(...collaborators);
+  } else {
+    collaborators.forEach(coll => {
+      for (let i = 0; i < realm.collaborators.length; i++) {
+        const savedColl = realm.collaborators[i];
+        if (savedColl.toString() === coll.toString()) {
+          realm.collaborators.splice(i, 1);
+          return;
+        }
+      }
+    });
+  }
+  return realm;
+}
+
+const getCollaboratorsApi = async (realmId, userId) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (!realm || realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  if (!isAuthorized(realm, userId)) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const collaboratorsData = [];
+  for (const coll of realm.collaborators) {
+    const user = await GoogleUserDoc.getUserById(coll);
+    if (user._id.toString() !== userId.toString()) {
+      collaboratorsData.push({
+        firstname: user.firstname,
+        lastname: user.lastname,
+        nickname: user.nickname,
+        id: user._id
+      });
+    }
+  }
+  return collaboratorsData;
+}
+
 module.exports = {
   addLessonXpToSumXpApi: addLessonXpToSumXpApi,
   addLessonXpToSumXp: addLessonXpToSumXp,
@@ -724,5 +965,14 @@ module.exports = {
   checkAllStudentInClanLevelUp: checkAllStudentInClanLevelUp,
   addTestApi: addTestApi,
   arePointsWrong: arePointsWrong,
-  areStepsWrong: areStepsWrong
+  areStepsWrong: areStepsWrong,
+  isUserCollaborator: isUserCollaborator,
+  findUserRealms: findUserRealms,
+  getStudentData: getStudentData,
+  createTeacherInvite: createTeacherInvite,
+  getPossibleCollaborators: getPossibleCollaborators,
+  getPossibleCollaboratorsApi: getPossibleCollaboratorsApi,
+  saveCollaboratorsApi: saveCollaboratorsApi,
+  saveCollaborators: saveCollaborators,
+  getCollaboratorsApi: getCollaboratorsApi
 };

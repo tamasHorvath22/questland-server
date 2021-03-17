@@ -33,7 +33,26 @@ const saveRealmAndBackup = async (realm, backup) => {
   }
 }
 
+const saveRealmAndRegisterTokens = async (realm, registerTokens) => {
+  const transaction = new Transaction(true);
+  realm.markModified('students');
+  realm.markModified('clans');
+  transaction.insert(schemas.REALM, realm);
+  registerTokens.forEach(token => {
+    transaction.insert(schemas.REGISTER_TOKEN, token);
+  });
+  try {
+    const result = await transaction.run();
+    return result[0];
+  } catch (err) {
+    console.error(err);
+    await transaction.rollback();
+    return false;
+  }
+}
+
 module.exports = {
   saveRealm: saveRealm,
-  saveRealmAndBackup: saveRealmAndBackup
+  saveRealmAndBackup: saveRealmAndBackup,
+  saveRealmAndRegisterTokens: saveRealmAndRegisterTokens
 }
