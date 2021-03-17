@@ -3,32 +3,63 @@ const RealmDoc = require('../persistence/realm.doc');
 const Realm = require('../models/realm.model');
 const Clan = require('../models/clan.model');
 const Student = require('../models/student.model');
-const ClassDoc = require('../persistence/classes.doc');
+// const ClassDoc = require('../persistence/classes.doc');
 const BackupDoc = require('../persistence/backup.doc');
-const ClanTresholdsDoc = require('../persistence/clan.tresholds.doc');
 const StudProp = require('../constants/student.properties');
 const Classes = require('../constants/classes');
-const CommonKeys = require('../constants/sheet.student.keys');
+const ClanTresholds = require('../constants/clan.tresholds');
 const RealmTransaction = require('../persistence/realms.transactions');
 const SheetService = require('./sheet.service')
 const Backup = require('../models/backup.model');
+const validIncomingPointTypes = require('../constants/valid.incoming.point.types');
+const ClassesWithTresholds = require('../constants/classes.with.tresholds');
 
-const addValue = async (data) => {
+
+const addValueApi = async (data) => {
+  // Typecheck of input data. If pointType, value, isDuel or isWinner not from expected type, the function returns
+  const areTypesWrong = areAddValueTypesWrong(data);
+  if (areTypesWrong) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
   const realm = await RealmDoc.getById(data.realmId);
-  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
-  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
+  if (realm === responseMessage.DATABASE.ERROR) {
+    // if no realm found, the function returns with database error.
+    // the reason of no realm can be invalid realmId also
     return responseMessage.DATABASE.ERROR;
   }
   const student = findElemById(realm.students, data.studentId);
-  const clanLevel = getStudentClanLevel(student, realm.clans);
+  if (!student) {
+    // if the studentId is invalid and no student found, the function returns with common error
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  const clanLevel = getStudentClanLevel(student.clan, realm.clans);
+  const modifiedStudent = addValue(data, student, clanLevel);
+  if (data.isDuel && data.isWinner && student.clan) {
+    const gloryPointsForDuelWin = 5;
+    const studentClan = findElemById(realm.clans, student.clan);
+    manageClanGloryPointsAndLevelUp(studentClan, gloryPointsForDuelWin);
+  }
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const areAddValueTypesWrong = (data) => {
+  return (
+    !validIncomingPointTypes.includes(data.pointType) ||
+    typeof data.value !== 'number' ||
+    typeof data.isDuel !== "boolean" ||
+    typeof data.isWinner !== "boolean"
+  )
+}
+
+const addValue = (data, student, clanLevel) => {
   student[data.pointType] = countModifiedValue(
     student,
     data.value,
     data.pointType,
     data.isDuel,
     clanLevel,
-    false,
-    clanTresholds
+    false
   );
   if (data.pointType === StudProp.MANA_POINTS && data.value < 0) {
     student[StudProp.SKILL_COUNTER]++;
@@ -39,24 +70,11 @@ const addValue = async (data) => {
   }
   if (data.isDuel) {
     student[StudProp.DUEL_COUNT]++;
-    if (data.isWinner) {
-      manageGloryPointsAfterDuel(realm, student, clanTresholds);
-    }
   }
-  const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.COMMON.ERROR;
+  return student;
 };
 
-const manageGloryPointsAfterDuel = (realm, student, clanTresholds) => {
-  if (!student.clan) {
-    return;
-  }
-  const studentClan = findElemById(realm.clans, student.clan);
-  const gloryPointsForDuelWin = 5;
-  manageClanGloryPointsAndLevelUp(studentClan, gloryPointsForDuelWin, clanTresholds);
-}
-
-const manageClanGloryPointsAndLevelUp = (studentClan, value, clanTresholds) => {
+const manageClanGloryPointsAndLevelUp = (studentClan, value) => {
   // finds the next level, even if it is an addition or substaction
   // if it is a substaction, the next level is the current level
   const nextClanLevel = studentClan.level + (value > 0 ? 1 : 0);
@@ -64,9 +82,9 @@ const manageClanGloryPointsAndLevelUp = (studentClan, value, clanTresholds) => {
   if (value >= 0) {
     // if it is an addition
     if (studentClan.level === 5) {
-      return;
+      return studentClan;
     }
-    if (studentClan.gloryPoints >= clanTresholds[nextClanLevel].treshold) {
+    if (studentClan.gloryPoints >= ClanTresholds[nextClanLevel].treshold) {
       studentClan.level++;
     }
   } else {
@@ -75,23 +93,24 @@ const manageClanGloryPointsAndLevelUp = (studentClan, value, clanTresholds) => {
       studentClan.gloryPoints = 0;
     }
     if (nextClanLevel === 1) {
-      return;
+      return studentClan;
     }
-    if (studentClan.gloryPoints < clanTresholds[nextClanLevel].treshold) {
+    if (studentClan.gloryPoints < ClanTresholds[nextClanLevel].treshold) {
       studentClan.level--;
     }
   }
+  return studentClan;
 }
 
-const getClanXpModifier = (clanLevel, isTest, clanTresholds) => {
-  let modifier = clanTresholds[clanLevel].xpModifierIncrease;
+const getClanXpModifier = (clanLevel, isTest) => {
+  let modifier = ClanTresholds[clanLevel].xpModifierIncrease;
   if (isTest) {
-    modifier += clanTresholds[clanLevel].testXpModifierIncrease;
+    modifier += ClanTresholds[clanLevel].testXpModifierIncrease;
   }
   return modifier;
 }
 
-const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel, isTest, clanTresholds) => {
+const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel, isTest) => {
   if (incomingValue < 0) {
     let newValue = student[pointType] + incomingValue;
     newValue = newValue < 0 ? 0 : newValue;
@@ -99,7 +118,7 @@ const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel
   }
   let modifier = 0;
   if (pointType === StudProp.LESSON_XP) {
-    modifier = getClanXpModifier(clanLevel, isTest, clanTresholds);
+    modifier = getClanXpModifier(clanLevel, isTest);
     modifier += student[StudProp.XP_MODIFIER];
   } else if (pointType === StudProp.MANA_POINTS) {
     modifier = student[StudProp.MANA_MODIFIER];
@@ -118,64 +137,76 @@ const countModifiedValue = (student, incomingValue, pointType, isDuel, clanLevel
     incomingValue *= 2;
   }
   let newValue = student[pointType] + incomingValue;
+  // mana max value is 600, if it is over, it is set to 600
   if (pointType === StudProp.MANA_POINTS && newValue > 600) {
     newValue = 600;
   }
-  newValue = newValue < 0 ? 0 : newValue;
+  // newValue = newValue < 0 ? 0 : newValue;
   return parseFloat(newValue.toFixed(2));
 }
 
-const addValueToAll = async (data) => {
+const addValueToAllApi = async (data) => {
+  const areInputWrong = areAddToAllValuesWrong(data);
+  if (areInputWrong) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
   const realm = await RealmDoc.getById(data.realmId);
-  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
-  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
+  if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  realm.students.forEach(async (student) => {
+  const modifiedRealm = addValueToAll(realm, data);
+  const result = await RealmTransaction.saveRealm(modifiedRealm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const areAddToAllValuesWrong = (data) => {
+  return (
+    !validIncomingPointTypes.includes(data.pointType) ||
+    typeof data.value !== 'number' ||
+    !Array.isArray(data.exclude)
+  )
+}
+
+const addValueToAll = (realm, data) => {
+  realm.students.forEach(student => {
     if (data.exclude.includes(student._id.toString())) {
       return;
     }
-    const clanLevel = getStudentClanLevel(student, realm.clans);
+    const clanLevel = getStudentClanLevel(student.clan, realm.clans);
     student[data.pointType] = countModifiedValue(
       student,
       data.value,
       data.pointType,
       false,
       clanLevel,
-      false,
-      clanTresholds
+      false
     );
-  })
-
-  const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.DATABASE.ERROR;
+  });
+  return realm;
 }
 
-const getStudentClanLevel = (student, clans) => {
+const getStudentClanLevel = (studentClan, clans) => {
   let clanLevel = 1;
-  if (student.clan) {
-    const clan = findElemById(clans, student.clan);
+  const clan = findElemById(clans, studentClan);
+  if (clan) {
     clanLevel = clan.level;
   }
   return clanLevel;
 }
 
-const addLessonXpToSumXp = async (realmId) => {
+const addLessonXpToSumXpApi = async (realmId) => {
   const realm = await RealmDoc.getById(realmId);
-  const levelUpResult = await checkStudentLevelUp(realm);
   const backup = await BackupDoc.getBackup();
-
+  
   if (
     realm === responseMessage.DATABASE.ERROR ||
-    levelUpResult === responseMessage.DATABASE.ERROR ||
-    backup === responseMessage.DATABASE.ERROR) {
+    backup === responseMessage.DATABASE.ERROR
+  ) {
     return responseMessage.DATABASE.ERROR;
   }
 
-  realm.students.forEach(student => {
-    student[StudProp.CUMULATIVE_XP] += student[StudProp.LESSON_XP];
-    student[StudProp.LESSON_XP] = 0;
-  })
+  addLessonXpToSumXp(realm.students);
+  checkStudentLevelUp(realm);
 
   saveBackup(realm, backup);
   const result = await RealmTransaction.saveRealmAndBackup(realm, backup);
@@ -185,6 +216,14 @@ const addLessonXpToSumXp = async (realmId) => {
   }
   return responseMessage.DATABASE.ERROR;
 };
+
+const addLessonXpToSumXp = (students) => {
+  students.forEach(student => {
+    student[StudProp.CUMULATIVE_XP] += student[StudProp.LESSON_XP];
+    student[StudProp.LESSON_XP] = 0;
+  });
+  return students;
+}
 
 const saveBackup = (realm, backup) => {
   const newBackup = Backup({
@@ -201,34 +240,34 @@ const saveBackup = (realm, backup) => {
   }
 }
 
-const checkStudentLevelUp = async (realm) => {
-  const classesObj = await ClassDoc.getClasses();
-  if (classesObj === responseMessage.DATABASE.ERROR) {
-    return responseMessage.DATABASE.ERROR;
-  }
+const checkStudentLevelUp = (realm) => {
   realm.students.forEach(student => {
     if (student.level === 8) {
       return;
     }
     const nextLevel = student.level + 1;
-    const treshold = classesObj.tresholds[nextLevel];
+    const treshold = ClassesWithTresholds.tresholds[nextLevel];
     if (student.cumulativeXp >= treshold) {
       const prevLevel = student.level;
       student.level++;
       if (student.clan && prevLevel % 2 === 0) {
-        checkAllStudentInClanLevelUp(realm, student._id);
+        checkAllStudentInClanLevelUp(realm, student);
       }
     }
   });
+  return realm;
 }
 
 const findElemById = (array, id) => {
+  if (!array || !array.length || !id) {
+    return null;
+  }
   return array.find(e => e._id.toString() === id.toString());
 }
 
-const checkAllStudentInClanLevelUp = (realm, studentId) => {
-  const refStudent = findElemById(realm.students, studentId);
-  const clan = findElemById(realm.clans, refStudent[StudProp[CommonKeys.CLAN]]);
+const checkAllStudentInClanLevelUp = (realm, refStudent) => {
+  // TODO unit tests
+  const clan = findElemById(realm.clans, refStudent.clan);
   let levelCounter = 0;
   clan.students.forEach(studId => {
     const student = findElemById(realm.students, studId);
@@ -247,6 +286,7 @@ const checkAllStudentInClanLevelUp = (realm, studentId) => {
     }
     clan.gloryPoints += pointsIncrease;
   }
+  return realm;
 }
 
 const getRealm = async (realmId) => {
@@ -262,12 +302,10 @@ const getBackupData = async (realmId) => {
   if (backup === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const saveTimeList = [];
+  let saveTimeList = [];
   const realmBackup = backup.realms[realmId.toString()];
   if (realmBackup) {
-    realmBackup.list.forEach(elem => {
-      saveTimeList.push(elem.time);
-    });
+    saveTimeList = realmBackup.list.map(elem => elem.time);
   }
   return saveTimeList;
 }
@@ -286,12 +324,8 @@ const getRealms = async () => {
   return mapped;
 };
 
-const getClasses = async () => {
-  const classesObj = await ClassDoc.getClasses();
-  if (classesObj === responseMessage.DATABASE.ERROR) {
-    return responseMessage.DATABASE.ERROR;
-  }
-  return classesObj.classes;
+const getClasses = () => {
+  return ClassesWithTresholds.classes;
 };
 
 const createRealm = async (realmName) => {
@@ -305,25 +339,53 @@ const createRealm = async (realmName) => {
   return responseMessage.REALM.CREATE_FAIL;
 }
 
-const modifyRealm = async (realm) => {
-  const realmDb = await RealmDoc.getById(realm._id);
-  if (realmDb === responseMessage.DATABASE.ERROR) {
-    return responseMessage.DATABASE.ERROR;
+const areStudentsWrong = (realm, students) => {
+  if (!students || !students.length) {
+    return true;
   }
-  realmDb.students = realm.students
-  realmDb.clans = realm.clans
-  const savedRealm = await RealmTransaction.saveRealm(realmDb);
-  return savedRealm ? savedRealm : responseMessage.DATABASE.ERROR;
+  const clanList = getRealmClans(realm);
+  const classes = Object.values(Classes);
+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    if (
+      !student.name ||
+      (student.class && !classes.includes(student.class)) ||
+      (clanList.length && student.clan && !clanList.includes(student.clan.toString()))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
-const addStudents = async (realmId, students) => {
+const getRealmStudentList = (students) => {
+  return students.map((student) => {
+    return student.name;
+  })
+}
+
+const addStudentsApi = async (realmId, students) => {
   const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
+  const studentsAreInvaild = areStudentsWrong(realm, students);
+  if (studentsAreInvaild) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  addStudents(realm, students);
+  const savedRealm = await RealmTransaction.saveRealm(realm);
+  return savedRealm ? savedRealm : responseMessage.DATABASE.ERROR;
+}
 
+const addStudents = (realm, students) => {
+  const savedStudents = getRealmStudentList(realm.students);
   const studentList = [];
   students.forEach(student => {
+    if (savedStudents.includes(student.name)) {
+      return;
+    }
     studentList.push(Student({
       [StudProp.NAME]: student.name,
       [StudProp.CLASS]: student.class,
@@ -338,28 +400,26 @@ const addStudents = async (realmId, students) => {
       [StudProp.PET_FOOD]: 0,
       [StudProp.CURSE_POINTS]: 0,
       [StudProp.DUEL_COUNT]: 0,
-    }))
+    }));
+    savedStudents.push(student.name);
   })
-
+  // another loop is needed because in the firts user has no ID yet
   studentList.forEach(student => {
     if (student.clan) {
       const savedClan = findElemById(realm.clans, student.clan);
       savedClan.students.push(student._id)
     }
   })
-
   realm.students.push(...studentList);
-  const savedRealm = await RealmTransaction.saveRealm(realm);
-  if (savedRealm) {
-    return savedRealm;
-  }
-  return responseMessage.DATABASE.ERROR;
+  return realm;
 }
 
 const createRealmToDb = async (realmName) => {
   const newRealm = Realm({
     name: realmName,
     finishLessonMana: 0,
+    xpStep: 0,
+    manaStep: 0,
     students: [],
     clans: []
   })
@@ -372,32 +432,64 @@ const createRealmToDb = async (realmName) => {
   }
 }
 
-const createClans = async (realmId, clans) => {
+const createClansApi = async (realmId, newClans) => {
   const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  const clanList = [];
-  clans.forEach(clan => {
-    clanList.push(Clan({
-      name: clan.name,
-      gloryPoints: 0,
-      level: 1,
-      students: []
-    }))
-  });
-  realm.clans.push(...clanList);
+  if (!Array.isArray(newClans)) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  createClans(realm, newClans);
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.DATABASE.ERROR;
 }
 
-const resetRealm = async (realmId) => {
+const getClanNames = (clans) => {
+  return clans.map(clan => clan.name);
+}
+
+const createClans = (realm, newClans) => {
+  const clanNames = getClanNames(realm.clans);
+  const newClanObjects = [];
+  newClans.forEach(clan => {
+    if (!clan.name || clanNames.includes(clan.name)) {
+      return;
+    }
+    newClanObjects.push(Clan({
+      name: clan.name,
+      gloryPoints: 0,
+      level: 1,
+      students: []
+    }));
+    clanNames.push(clan.name);
+  });
+  realm.clans.push(...newClanObjects);
+  return realm;
+}
+
+const resetRealmApi = async (realmId) => {
   const realm = await RealmDoc.getById(realmId);
   const backup = await BackupDoc.getBackup();
   if (realm === responseMessage.DATABASE.ERROR || backup === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
+  resetRealm(realm);
+  const realmBackup = backup.realms[realm._id.toString()];
+  realmBackup.list = [];
+  const result = await RealmTransaction.saveRealmAndBackup(realm, backup);
+  if (result) {
+    SheetService.syncSheet(realm, realm.name, null);
+    return result;
+  }
+  return responseMessage.DATABASE.ERROR;
+}
+
+const resetRealm = (realm) => {
   realm.finishLessonMana = 0;
+  realm.xpStep = 0,
+  realm.manaStep = 0,
+  realm.clans = [];
   realm.students.forEach(student => {
     student[StudProp.CLASS] = null,
     student[StudProp.CLAN] = null,
@@ -412,27 +504,45 @@ const resetRealm = async (realmId) => {
     student[StudProp.CURSE_POINTS] = 0,
     student[StudProp.DUEL_COUNT] = 0
   });
-  realm.clans = [];
-  const realmBackup = backup.realms[realm._id.toString()];
-  realmBackup.list = [];
-
-  const result = await RealmTransaction.saveRealmAndBackup(realm, backup);
-  if (result) {
-    SheetService.syncSheet(realm, realm.name, null);
-    return result;
-  }
-  return responseMessage.DATABASE.ERROR;
+  return realm;
 }
 
-const addTest = async (realmId, points) => {
+const addTestApi = async (realmId, points) => {
   const realm = await RealmDoc.getById(realmId);
-  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
-  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
+  if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  points.forEach(async (test) => {
+  const studentIds = getStudentIds(realm.students);
+  const arePointsNotGood = arePointsWrong(studentIds, points);
+  if (arePointsNotGood) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  addTest(realm, points);
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const getStudentIds = (students) => {
+  return students.map(student => student._id.toString());
+}
+
+const arePointsWrong = (studentIdList, points) => {
+  if (!points || !Array.isArray(points) || !points.length) {
+    return true;
+  }
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i]
+    if (!point.id || !studentIdList.includes(point.id) || !point.xp) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const addTest = (realm, points) => {
+  points.forEach(test => {
     const student = findElemById(realm.students, test.id);
-    const clanLevel = getStudentClanLevel(student, realm.clans);
+    const clanLevel = getStudentClanLevel(student.clan, realm.clans);
     if (student.class === Classes.WIZARD) {
       test.xp *= 2;
     }
@@ -442,39 +552,145 @@ const addTest = async (realmId, points) => {
       StudProp.LESSON_XP,
       false,
       clanLevel,
-      true,
-      clanTresholds
+      true
     );
   });
-  const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.DATABASE.ERROR;
+  return realm;
 }
 
 const addGloryPoints = async (realmId, clanId, points) => {
   const realm = await RealmDoc.getById(realmId);
-  const clanTresholds = await ClanTresholdsDoc.getClanTresholds();
-  if (realm === responseMessage.DATABASE.ERROR || clanTresholds === responseMessage.DATABASE.ERROR) {
-    return responseMessage.DATABASE.ERROR;
-  }
-  const studentClan = findElemById(realm.clans, clanId);
-  manageClanGloryPointsAndLevelUp(studentClan, points, clanTresholds);
-  const result = await RealmTransaction.saveRealm(realm);
-  return result ? result : responseMessage.COMMON.ERROR;
-}
-
-const setLessonMana = async (realmId, lessonMana) => {
-  const realm = await RealmDoc.getById(realmId);
   if (realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
   }
-  realm.finishLessonMana = lessonMana;
+  const studentClan = findElemById(realm.clans, clanId);
+  if (!studentClan || typeof points !== 'number') {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  manageClanGloryPointsAndLevelUp(studentClan, points);
   const result = await RealmTransaction.saveRealm(realm);
   return result ? result : responseMessage.DATABASE.ERROR;
 }
 
+const areStepsWrong = (lessonMana, xpStep, manaStep) => {
+  return (
+    typeof lessonMana !== 'number' ||
+    typeof xpStep !== 'number' ||
+    typeof manaStep !== 'number'
+  )
+}
+
+const setRealmDefaultSteps = async (realmId, lessonMana, xpStep, manaStep) => {
+  const realm = await RealmDoc.getById(realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const areStepsNotOk = areStepsWrong(lessonMana, xpStep, manaStep);
+  if (areStepsNotOk) {
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  realm.finishLessonMana = lessonMana;
+  realm.xpStep = xpStep;
+  realm.manaStep = manaStep;
+
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const saveModifiedStudentApi = async (modifiedStudent) => {
+  const realm = await RealmDoc.getById(modifiedStudent.realmId);
+  if (realm === responseMessage.DATABASE.ERROR) {
+    return responseMessage.DATABASE.ERROR;
+  }
+  const student = findElemById(realm.students, modifiedStudent._id);
+  const areTypesWrong = areModifyStudentTypesWrong(realm, modifiedStudent);
+  const areStudentClansWrong = areClansWrong(realm, modifiedStudent.clan);
+  if (!student || areTypesWrong || areStudentClansWrong) {
+    // if the studentId is invalid and no student found, the function returns with common error
+    return responseMessage.COMMON.INVALID_DATA;
+  }
+  setModifiedStudent(student, modifiedStudent);
+  setStudentClans(realm, student, modifiedStudent.clan);
+  const result = await RealmTransaction.saveRealm(realm);
+  return result ? result : responseMessage.DATABASE.ERROR;
+}
+
+const setStudentClans = (realm, student, newClan) => {
+  if (!newClan) {
+    // student had no clan before and was not added this time either
+    return realm;
+  }
+  let prevClan;
+  if (student.clan) {
+    // try to find previous clan
+    prevClan = findElemById(realm.clans, student.clan);
+  }
+  // find current clan
+  const currentClan = findElemById(realm.clans, newClan);
+  // if the clan ID not changed, the function returns
+  if (prevClan && prevClan._id.toString() === currentClan._id.toString()) {
+    return realm;
+  }
+  // add student to clan students
+  currentClan.students.push(student._id);
+  // add clan to student
+  student.clan = currentClan._id;
+  if (!prevClan) {
+    // if no previous clan, no more changes
+    return realm;
+  }
+  // if there is a previous clan, student is removed from its students
+  for (let i = 0; i < prevClan.students.length; i++) {
+    if (prevClan.students[i].toString() === student._id.toString()) {
+      prevClan.students.splice(i, 1);
+      return realm;
+    }
+  }
+}
+
+const areClansWrong = (realm, newClan) => {
+  const clanList = getRealmClans(realm);
+  if (!newClan) {
+    return false;
+  }
+  return !clanList.includes(newClan.toString());
+}
+
+const getRealmClans = (realm) => {
+  const clanList = [];
+  realm.clans.forEach(clan => {
+    clanList.push(clan._id.toString());
+  });
+  return clanList;
+}
+
+const areModifyStudentTypesWrong = (realm, modifiedStudent) => {
+  const clanlist = getRealmClans(realm);
+  const classes = Object.values(Classes);
+  // input type check
+  return (
+    !modifiedStudent.name ||
+    (modifiedStudent.class && !classes.includes(modifiedStudent.class)) ||
+    (clanlist.length && modifiedStudent.clan && !clanlist.includes(modifiedStudent.clan.toString())) ||
+    typeof modifiedStudent.xpModifier !== 'number' ||
+    typeof modifiedStudent.manaModifier !== 'number' ||
+    modifiedStudent.xpModifier < 0 ||
+    modifiedStudent.manaModifier < 0
+  );
+}
+
+const setModifiedStudent = (student, modifiedStudent) => {
+  student.name = modifiedStudent.name;
+  student.class = modifiedStudent.class;
+  student.xpModifier = modifiedStudent.xpModifier;
+  student.manaModifier = modifiedStudent.manaModifier;
+  return student;
+}
+
 module.exports = {
+  addLessonXpToSumXpApi: addLessonXpToSumXpApi,
   addLessonXpToSumXp: addLessonXpToSumXp,
-  addValue: addValue,
+  addValueApi: addValueApi,
   getRealm: getRealm,
   getRealms: getRealms,
   addValueToAll: addValueToAll,
@@ -482,10 +698,31 @@ module.exports = {
   createRealm: createRealm,
   addStudents: addStudents,
   createClans: createClans,
-  modifyRealm: modifyRealm,
+  createClansApi: createClansApi,
   getBackupData: getBackupData,
   resetRealm: resetRealm,
   addTest: addTest,
   addGloryPoints: addGloryPoints,
-  setLessonMana: setLessonMana
+  setRealmDefaultSteps: setRealmDefaultSteps,
+  findElemById: findElemById,
+  getStudentClanLevel: getStudentClanLevel,
+  countModifiedValue: countModifiedValue,
+  addValue: addValue,
+  manageClanGloryPointsAndLevelUp: manageClanGloryPointsAndLevelUp,
+  addValueToAllApi: addValueToAllApi,
+  resetRealmApi: resetRealmApi,
+  saveModifiedStudentApi: saveModifiedStudentApi,
+  setModifiedStudent: setModifiedStudent,
+  areModifyStudentTypesWrong: areModifyStudentTypesWrong,
+  areClansWrong: areClansWrong,
+  setStudentClans: setStudentClans,
+  areAddValueTypesWrong: areAddValueTypesWrong,
+  areStudentsWrong: areStudentsWrong,
+  addStudentsApi: addStudentsApi,
+  areAddToAllValuesWrong: areAddToAllValuesWrong,
+  checkStudentLevelUp: checkStudentLevelUp,
+  checkAllStudentInClanLevelUp: checkAllStudentInClanLevelUp,
+  addTestApi: addTestApi,
+  arePointsWrong: arePointsWrong,
+  areStepsWrong: areStepsWrong
 };
