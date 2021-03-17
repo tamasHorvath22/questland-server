@@ -687,7 +687,6 @@ const setRealmDefaultSteps = async (realmId, lessonMana, xpStep, manaStep, userI
 }
 
 const saveModifiedStudentApi = async (modifiedStudent, userId) => {
-  console.log(modifiedStudent)
   const realm = await RealmDoc.getById(mongoose.Types.ObjectId(modifiedStudent.realmId));
   if (!realm || realm === responseMessage.DATABASE.ERROR) {
     return responseMessage.DATABASE.ERROR;
