@@ -17,7 +17,7 @@ module.exports = function (app) {
     }
   */
   app.post("/add-value", jsonParser, async (req, res) => {
-    res.send(await RealmService.addValueApi(req.body));
+    res.send(await RealmService.addValueApi(req.body, req.decoded.userId));
   });
 
   /* 
@@ -30,7 +30,7 @@ module.exports = function (app) {
     }
   */
   app.post("/add-value-to-all", jsonParser, async (req, res) => {
-    res.send(await RealmService.addValueToAllApi(req.body, res));
+    res.send(await RealmService.addValueToAllApi(req.body, req.decoded.userId));
   });
 
   /* 
@@ -50,7 +50,7 @@ module.exports = function (app) {
     }
   */
   app.post("/reset-realm", jsonParser, async (req, res) => {
-    res.send(await RealmService.resetRealmApi(req.body.realmId));
+    res.send(await RealmService.resetRealmApi(req.body.realmId, req.decoded.userId));
   });
 
   /* 
@@ -61,7 +61,7 @@ module.exports = function (app) {
     }
   */
   app.post("/add-students", jsonParser, async (req, res) => {
-    res.send(await RealmService.addStudentsApi(req.body.realmId, req.body.students));
+    res.send(await RealmService.addStudentsApi(req.body.realmId, req.body.students, req.decoded.userId));
   });
 
   /* 
@@ -72,17 +72,17 @@ module.exports = function (app) {
     }
   */
   app.post("/add-test", jsonParser, async (req, res) => {
-    res.send(await RealmService.addTestApi(req.body.realmId, req.body.points));
+    res.send(await RealmService.addTestApi(req.body.realmId, req.body.points, req.decoded.userId));
   });
 
   /* 
     request: 
     {
-      student: the modified student -> { name, class, clan, xpModifier, manaModifier }
+      student: the modified student -> { name, class, clan, xpModifier, manaModifier, realmId, _id (student ID) }
     }
   */
   app.post("/save-modified-student", jsonParser, async (req, res) => {
-    res.send(await RealmService.saveModifiedStudentApi(req.body.student));
+    res.send(await RealmService.saveModifiedStudentApi(req.body.student, req.decoded.userId));
   });
 
   /* 
@@ -93,7 +93,7 @@ module.exports = function (app) {
     }
   */
   app.post("/add-clans", jsonParser, async (req, res) => {
-    res.send(await RealmService.createClansApi(req.body.realmId, req.body.clans));
+    res.send(await RealmService.createClansApi(req.body.realmId, req.body.clans, req.decoded.userId));
   });
 
   /* 
@@ -108,7 +108,8 @@ module.exports = function (app) {
     res.send(await RealmService.addGloryPoints(
       req.body.realmId,
       req.body.clanId,
-      req.body.points
+      req.body.points,
+      req.decoded.userId
     ));
   });
 
@@ -126,7 +127,8 @@ module.exports = function (app) {
       req.body.realmId,
       req.body.lessonMana,
       req.body.xpStep,
-      req.body.manaStep
+      req.body.manaStep,
+      req.decoded.userId
     ));
   });
 
@@ -138,7 +140,7 @@ module.exports = function (app) {
     }
   */
   app.post("/sync-backup", jsonParser, async (req, res) => {
-    res.send(await SheetService.syncBackup(req.body.realmId, req.body.time));
+    res.send(await SheetService.syncBackup(req.body.realmId, req.body.time, req.decoded.userId));
   });
 
   /* 
@@ -148,7 +150,7 @@ module.exports = function (app) {
     }
   */
   app.post("/add-lesson-xp-to-cumulative-xp", jsonParser, async (req, res) => {
-    res.send(await RealmService.addLessonXpToSumXpApi(req.body.realmId));
+    res.send(await RealmService.addLessonXpToSumXpApi(req.body.realmId, req.decoded.userId));
   });
 
   app.get("/realms/:realmId", jsonParser, async (req, res) => {
@@ -156,7 +158,7 @@ module.exports = function (app) {
   });
 
   app.get("/backup/:realmId", jsonParser, async (req, res) => {
-    res.send(await RealmService.getBackupData(req.params.realmId));
+    res.send(await RealmService.getBackupData(req.params.realmId, req.decoded.userId));
   });
 
   app.get("/realms", jsonParser, async (req, res) => {
